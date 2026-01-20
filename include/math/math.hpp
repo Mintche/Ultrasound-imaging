@@ -62,60 +62,31 @@ template<typename T> ostream& operator<<(ostream& os,const vector<T>& v)
 }
 
 //---------------------------------------------------------------------------
-//     classe abstraite Matrix
-//---------------------------------------------------------------------------
-
-template <typename T>
-
-class Matrix {
-
-protected:
-
-    vector<T> mat;
-    int n_rows;
-    int n_cols;
-
-public:
-
-    Matrix(int rows, int cols) : n_rows(rows), n_cols(cols), mat(rows * cols, T(0)) {}
-    
-    // Destructeur
-
-    virtual ~Matrix() {} 
-
-    int rows() const { return n_rows; }
-    int cols() const { return n_cols; }
-
-    // Méthodes Virtuelles Pures (pas de méthodes d'accés pour la performance)
-
-    virtual vector<T> operator*(const vector<T>& x) const = 0;
-
-    virtual void solve(vector<T>& x, const vector<T>& b) = 0;
-    
-    virtual void print(ostream& os) const = 0;
-};
-
-
-//---------------------------------------------------------------------------
 //     classe FullMatrix
 //---------------------------------------------------------------------------
 
 template <typename T>
 
-class FullMatrix : public Matrix<T> {
+class FullMatrix {
 
+protected:
+
+    vector<T> coefs;
+    int n_rows;
+    int n_cols;
+    
 public:
 
-    FullMatrix(int n, int m) : Matrix<T>(n, m) {}
+    FullMatrix(int n, int m) : n_rows(n), n_cols(m), coefs(n * m, T(0)) {}
 
     // Accès
 
-    T& operator()(int i, int j) { return data[i * this->n_cols + j]; }
-    const T& operator()(int i, int j) const { return data[i * this->n_cols + j]; }
+    T& operator()(int i, int j) { return coefs[i * this->n_cols + j]; }
+    const T& operator()(int i, int j) const { return coefs[i * this->n_cols + j]; }
 
     // Produit Matrice-Vecteur
     
-    vector<T> operator*(const vector<T>& x) const override {
+    vector<T> operator*(const vector<T>& x) const {
         vector<T> res(this->n_rows, T(0));
         for(int i = 0; i < this->n_rows; ++i) {
             for(int j = 0; j < this->n_cols; ++j) {
@@ -127,14 +98,34 @@ public:
 
     // Résolution via pivot de Gauss (LU)
 
-    void solve(vector<T>& x, const vector<T>& b) override {
+    void solve(vector<T>& x, const vector<T>& b){
 
-        // ICI : Implémenter l'élimination de Gauss
-        // C'est requis par le sujet pour les matrices pleines
+        int n = this->n_rows;
+        FullMatrix<T> A = *this; // Copie de la matrice
+        x = b; // Initialisation du vecteur solution
+
+        // Elimination de Gauss
+        for (int k = 0; k < n; ++k) {
+            for (int i = k + 1; i < n; ++i) {
+                T factor = A(i, k) / A(k, k);
+                for (int j = k; j < n; ++j) {
+                    A(i, j) -= factor * A(k, j);
+                }
+                x[i] -= factor * x[k];
+            }
+        }
+
+        // Substitution arrière
+        for (int i = n - 1; i >= 0; --i) {
+            for (int j = i + 1; j < n; ++j) {
+                x[i] -= A(i, j) * x[j];
+            }
+            x[i] /= A(i, i);
+        }
 
     }
 
-    void print(ostream& os) const override {
+    void print(ostream& os) const {
         os << "(";
         for (int i = 0; i < this->n_rows; i++){
             for (int j = 0; j < this->n_cols; j++){
@@ -151,24 +142,60 @@ public:
 //---------------------------------------------------------------------------
 
 template <typename T>
-class ProfileMatrix : public Matrix<T> {
+class ProfileMatrix {
 private:
 
+    vector<T> coefs;
     vector<T> p;
     vector<T> q;
 
 public:
 
-    ProfileMatrix(int n, int m) : Matrix<T>(n, m), p(n,int(0)), q(n,int(0)) {}
+    ProfileMatrix(vector<T>& p_in, int n_rows) : p(p_in), q(p_in.size(), size_t(0)) {
 
-    //remplissage de p et q (si on a la matrice ou si on sait qu'on fait de la FEM et qu'on a les triangles)
+        // Initialisation de q
+        q[0] = 0;
+
+        for (size_t i = 1; i < p.size(); i++) {
+            q[i] = n_rows - p[i] + 1;
+        }
+
+        // Initialisation de coefs
+        size_t total_size = 0;
+        for (size_t i = 0; i < p.size(); i++) {
+            total_size += q[i];
+        }
+        coefs.resize(total_size, T(0));
+    }
 
     // Accès
 
-    T& operator()(int i, int j) {/* ... */}
+    T& operator()(int i, int j) {
+        if (i >= j) {
+            size_t index = 0;
+            for (size_t k = 0; k < i; k++) {
+                index += q[k];
+            }
+            index += (j - (i - p[i]));
+            return coefs[index];
+        } else {
+            size_t index = 0;
+            for (size_t k = 0; k < j; k++) {
+                index += q[k];
+            }
+            index += (i - (j - p[j]));
+            return coefs[index];
+        }
+    }
 
     vector<T> operator*(const vector<T>& x) const override {
-        //
+        vector<T> res(this->n_rows, T(0));
+        for (int i = 0; i < this->n_rows; ++i) {
+            for (int j = 0; j < this->n_cols; ++j) {
+                res[i] += (*this)(i, j) * x[j];
+            }
+        }
+        return res;
     }
 
     void solve(vector<T>& x, const vector<T>& b) override {
