@@ -6,7 +6,7 @@ all: test_run
 
 # Compilation
 test_run: test_math.cpp ../include/math.hpp
-	$(CC) $(FLAGS) test_math.cpp -o test_math
+	$(CC) $(FLAGS) test_math.cpp -o test_math.x
 
 # Nettoyage
 clean:
