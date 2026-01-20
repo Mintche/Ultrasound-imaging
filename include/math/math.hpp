@@ -7,7 +7,7 @@
 #include <cmath>
 using namespace std;
 //---------------------------------------------------------------------------
-//  vector<T> algebra
+//  Opérations sur vector<T>
 //---------------------------------------------------------------------------
 template<typename T> vector<T> operator+(const vector<T>& u, const vector<T>& v)
 {
@@ -62,227 +62,125 @@ template<typename T> ostream& operator<<(ostream& os,const vector<T>& v)
 }
 
 //---------------------------------------------------------------------------
-//     classe Pint ( pair<int,int>)
-//---------------------------------------------------------------------------
-
-typedef pair<int,int> Pint;
-
-inline bool operator<(const Pint& ij1, const Pint& ij2)
-{
-  if ( ij1.first < ij2.first) return true;
-  if ( ij1.first == ij2.first and ij1.second < ij2.second ) return true;
-  return false;
-}
-inline ostream& operator<<(ostream& os,const Pint& ij)
-{
-    os << "(" << ij.first << "," << ij.second << ")";
-    return os;
-}
-
-//---------------------------------------------------------------------------
-//     classe Sparse<T> héritée de map<Pint,T>
+//     classe abstraite Matrix
 //---------------------------------------------------------------------------
 
 template <typename T>
-class Sparse : public map<Pint,T>
-{public:
-  int m,n; //dimensions de la matrice
-  Sparse(int mi=0,int ni=0);
-  T& operator()(int i, int j);
-  T operator()(int i, int j) const;
-  void supprime(int i,int j);
-  Sparse<T>& operator+=(const Sparse<T>& M);  // +=M
-  Sparse<T>& operator-=(const Sparse<T>& M);  // -=M
-  Sparse<T>& operator*=(const T& s);          // *=s
-  Sparse<T>& operator/=(const T& s);          // /=s
-  void remplissage() const; // affiche le remplissage
+
+class Matrix {
+
+protected:
+
+    vector<T> mat;
+    int n_rows;
+    int n_cols;
+
+public:
+
+    Matrix(int rows, int cols) : n_rows(rows), n_cols(cols), mat(rows * cols, T(0)) {}
+    
+    // Destructeur
+
+    virtual ~Matrix() {} 
+
+    int rows() const { return n_rows; }
+    int cols() const { return n_cols; }
+
+    // Méthodes Virtuelles Pures (pas de méthodes d'accés pour la performance)
+
+    virtual vector<T> operator*(const vector<T>& x) const = 0;
+
+    virtual void solve(vector<T>& x, const vector<T>& b) = 0;
+    
+    virtual void print(ostream& os) const = 0;
 };
 
-// implémentations des fonctions associées à la classe Sparse
+
+//---------------------------------------------------------------------------
+//     classe FullMatrix
+//---------------------------------------------------------------------------
 
 template <typename T>
 
-Sparse<T>::Sparse(int mi, int ni) //il herite du constructeur de map donc il initialise la map aussi
-{
-    m = mi;
-    n = ni;
-}
+class FullMatrix : public Matrix<T> {
 
-template<typename T>
-T Sparse<T>::operator()(int i, int j) const
-{
-    if (i <= m && j <= n && i > 0 && j > 0) {
-        auto it = this->find(Pint(i, j)); // Utiliser find
-        if (it != this->end()) return it->second;
-    }
-    return T();
-}
+public:
 
-template<typename T>
+    FullMatrix(int n, int m) : Matrix<T>(n, m) {}
 
-T& Sparse<T>::operator()(int i, int j)
-{
-    if (i <= m && j <= n && i > 0 && j > 0) return (*this)[Pint(i,j)];
-    if ( i > m && j > n){
-        m = i;
-        n = j;
-        return (*this)[Pint(i,j)];
-    }
-    if (j > n){
-        n = j;
-        return (*this)[Pint(i,j)];
-    }
-    if (i > m){
-        m = i;
-        return (*this)[Pint(i,j)];
-    }
-    return (*this)[Pint(i,j)];
-}
+    // Accès
 
-template<typename T>
-ostream& operator<<(ostream& os,const Sparse<T>& S)
-{
-    os << "Matrcie Sparse de " << S.size() << " éléments." << endl;
+    T& operator()(int i, int j) { return data[i * this->n_cols + j]; }
+    const T& operator()(int i, int j) const { return data[i * this->n_cols + j]; }
 
-    for (auto& it : S){
-        os << it.first << " : " << it.second << endl;
-    }
-    return os;
-}
-
-template<typename T>
-
-void Sparse<T>::remplissage() const
-{
-    cout << "  ";
-    for(int i =1 ; i<=m; i++) cout << i << " ";
-    cout << endl;
-
-    for(int i =1 ; i<=m; i++){
-        cout << i << " ";
-        for (int j=1; j<=n; j++){
-            auto it = (*this).find(Pint(i,j));
-            if ( it != (*this).end()) cout << "x ";
-            else cout << "  ";
+    // Produit Matrice-Vecteur
+    
+    vector<T> operator*(const vector<T>& x) const override {
+        vector<T> res(this->n_rows, T(0));
+        for(int i = 0; i < this->n_rows; ++i) {
+            for(int j = 0; j < this->n_cols; ++j) {
+                res[i] += (*this)(i, j) * x[j];
+            }
         }
-        cout << endl;
-    }
-}
-
-template<typename T>
-
-Sparse<T>& Sparse<T>::operator+=(const Sparse<T>& M)
-{
-    for (auto& it : M){
-        (*this)(it.first.first,it.first.second) += it.second;
-    }
-    return *this;
-}
-
-template<typename T>
-
-Sparse<T>& Sparse<T>::operator-=(const Sparse<T>& M)
-{
-    for (auto& it : M){
-        (*this)(it.first.first,it.first.second) -= it.second;
-    }
-    return *this;
-}
-
-template<typename T>
-
-Sparse<T>& Sparse<T>::operator*=(const T& s)
-{
-    for (auto& it : *this){
-        it.second *= s;
-    }
-    return *this;
-}
-
-template<typename T>
-
-Sparse<T>& Sparse<T>::operator/=(const T& s)
-{
-    for (auto& it : *this){
-        it.second /= s;
-    }
-    return *this;
-}
-
-template<typename T>
-
-Sparse<T> operator+(const Sparse<T>& A,const Sparse<T>& B)
-{
-    Sparse<T> R(A);
-    return R+=B;
-}
-
-template<typename T>
-
-Sparse<T> operator-(const Sparse<T>& A,const Sparse<T>& B)
-{
-    Sparse<T> R(A);
-    return R-=B;
-}
-
-template<typename T>
-
-Sparse<T> operator*(const Sparse<T>& A,const T& s)
-{
-    Sparse<T> R(A);
-    return R*=s;
-}
-
-template<typename T>
-
-Sparse<T> operator*(const T& s,const Sparse<T>& A)
-{
-    return A*s;
-}
-
-template<typename T>
-
-Sparse<T> operator/(const Sparse<T>& A,const T& s)
-{
-    Sparse<T> R(A);
-    return R/=s;
-}
-
-template<typename T>
-vector<T> operator*(const Sparse<T>& A, const vector<T>& b)
-{
-    if (A.n != b.size()) {
-        cerr << "Erreur dimensions: A(" << A.m << "x" << A.n 
-             << ") * b(" << b.size() << ")" << endl;
-        return vector<T>(); 
-    }
-    vector<T> x(A.m, T(0)); 
-    for (auto const& element : A) {
-        int i = element.first.first;
-        int j = element.first.second;
-        T val = element.second;
-
-        x[i-1] += val * b[j-1];
+        return res;
     }
 
-    return x;
-}
+    // Résolution via pivot de Gauss (LU)
 
-template<typename T>
+    void solve(vector<T>& x, const vector<T>& b) override {
 
-vector<T> gradConj(const Sparse<T>& A, const vector <T>& b , const vector <T>& x0 ,int kmax , const T& eps=0.0001)
-{
-    vector<T> x = x0;
-    vector<T> G = A*x0 - b;
-    vector<T> W = G;
-    for (int k=0;k<kmax;k++){
-        T theta = (G|W)/(A*W|W);
-        x = x - theta*W;
-        vector<T> temp = G;
-        G = G - theta*A*W;
-        if (norme(G)<=eps*norme(b)) cout << "Convegence à " << eps <<" près"; return x;
-        W= G + (norme(G)/norme(temp))*W;
+        // ICI : Implémenter l'élimination de Gauss
+        // C'est requis par le sujet pour les matrices pleines
+
     }
-    return x; 
-}
+
+    void print(ostream& os) const override {
+        os << "(";
+        for (int i = 0; i < this->n_rows; i++){
+            for (int j = 0; j < this->n_cols; j++){
+                os << (*this)(i,j) << " ";
+            }
+            os <<endl;
+        }
+        os << ")";
+    }
+};
+
+//---------------------------------------------------------------------------
+//     Classe ProfileMatrix
+//---------------------------------------------------------------------------
+
+template <typename T>
+class ProfileMatrix : public Matrix<T> {
+private:
+
+    vector<T> p;
+    vector<T> q;
+
+public:
+
+    ProfileMatrix(int n, int m) : Matrix<T>(n, m), p(n,int(0)), q(n,int(0)) {}
+
+    //remplissage de p et q (si on a la matrice ou si on sait qu'on fait de la FEM et qu'on a les triangles)
+
+    // Accès
+
+    T& operator()(int i, int j) {/* ... */}
+
+    vector<T> operator*(const vector<T>& x) const override {
+        //
+    }
+
+    void solve(vector<T>& x, const vector<T>& b) override {
+        // ATTENTION: Helmholtz (k0^2) n'est pas définie positive. Gauss est plus sûr.
+    }
+    
+    void print(ostream& os) const override { /* ... */ }
+};
+
+//---------------------------------------------------------------------------
+//     Solver
+//---------------------------------------------------------------------------
+
+
 #endif //MATH_HPP
