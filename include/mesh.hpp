@@ -1,6 +1,7 @@
 #ifndef MESH_HPP
 #define MESH_HPP
 
+#include <array>
 #include <cctype>
 #include <cstdint>
 #include <fstream>
