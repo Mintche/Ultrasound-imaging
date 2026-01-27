@@ -1,10 +1,10 @@
 #ifndef MESH_HPP
 #define MESH_HPP
 
-#include <array>
 #include <cctype>
 #include <cstdint>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -100,7 +100,8 @@ public:
 
     // Read a .msh (MSH v2 ASCII) and enrich it to P2.
     // defect_tags: if not empty, triangles with ref in defect_tags are marked as defect.
-    void read_msh_v2_ascii(const std::string& filename,  const std::vector<int>& defect_tags = {}) {
+    void read_msh_v2_ascii(const std::string& filename,
+                           const std::vector<int>& defect_tags = {}) {
 
         std::ifstream in(filename);
         if(!in) throw std::runtime_error("MeshP2: cannot open file: " + filename);
@@ -170,13 +171,14 @@ public:
 
         for(long long i=0;i<nb_nodes;i++){
             std::getline(in,line);
-            auto vals = detail::split_ll(line);
-            if(vals.size()<4) throw std::runtime_error("MeshP2: invalid node line: " + line);
-            long long tag = vals[0];
-            double x=0,y=0;
+            // Node line in MSH2 is: <nodeTag> <x> <y> <z>
+            // IMPORTANT: coordinates are floating point, so we must NOT parse them as integers.
+            long long tag = 0;
+            double x=0.0, y=0.0, z=0.0;
             {
                 std::stringstream ss(line);
-                ss >> tag >> x >> y; // ignore z
+                if(!(ss >> tag >> x >> y >> z))
+                    throw std::runtime_error("MeshP2: invalid node line: " + line);
             }
             Point2D p; p.x=x; p.y=y; p.id=static_cast<int>(nodes.size());
             nodes.push_back(p);
