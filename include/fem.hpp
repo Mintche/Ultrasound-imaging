@@ -22,15 +22,19 @@ public:
     // Ordre des noeuds : 0,1,2 (sommets) puis 3,4,5 (milieux)
     static void evaluate_shape_functions(double x, double y, std::vector<double>& phi) {
         // Astuce : utilise les coordonnées barycentriques
-        // L1 = 1 - x - y;
-        // L2 = x;
-        // L3 = y;
+        double L1 = 1 - x - y;
+        double L2 = x;
+        double L3 = y;
 
         // TODO: Implémenter les formules pour les sommets (phi[0] à phi[2])
-        // ex: phi[0] = L1 * (2 * L1 - 1);
+        phi[0] = L1 * (2 * L1 - 1);
+        phi[1] = L2 * (2 * L2 - 1);
+        phi[2] = L3 * (2 * L3 - 1);
 
         // TODO: Implémenter les formules pour les milieux (phi[3] à phi[5])
-        // ex: phi[3] = 4 * L1 * L2;
+        phi[3] = 4 * L1 * L2;
+        phi[4] = 4 * L2 * L3;
+        phi[5] = 4 * L3 * L1;
     }
 
     // -------------------------------------------------------------------------
