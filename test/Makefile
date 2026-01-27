@@ -10,4 +10,4 @@ test_run: test_math.cpp ../include/math.hpp
 
 # Nettoyage
 clean:
-	rm -f test_run
+	rm -f *.x
