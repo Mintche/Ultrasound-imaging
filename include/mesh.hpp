@@ -103,8 +103,7 @@ public:
 
     // Read a .msh (MSH v2 ASCII) and enrich it to P2.
     // defect_tags: if not empty, triangles with ref in defect_tags are marked as defect.
-    void read_msh_v2_ascii(const std::string& filename,
-                           const std::vector<int>& defect_tags = {}) {
+    void read_msh_v2_ascii(const std::string& filename,  const std::vector<int>& defect_tags = {}) {
 
         std::ifstream in(filename);
         if(!in) throw std::runtime_error("MeshP2: cannot open file: " + filename);
