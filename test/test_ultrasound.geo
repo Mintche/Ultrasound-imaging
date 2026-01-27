@@ -8,6 +8,8 @@
 //  - BORD_HAUT : 13
 //  - BORD_BAS  : 14
 
+Mesh.MshFileVersion = 2.2;
+
 SetFactory("OpenCASCADE");
 
 // ----------------------
