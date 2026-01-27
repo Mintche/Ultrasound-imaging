@@ -150,8 +150,6 @@ public:
         }
     }
 
-    
-
     // Résolution via pivot de Gauss
 
     void solve(vector<T>& x, const vector<T>& b){
