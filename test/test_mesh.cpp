@@ -5,7 +5,7 @@ int main(){
     MeshP2 mesh;
 
     // si ta zone "défaut" est taggée 2 dans Gmsh :
-    mesh.read_msh_v2_ascii("maillage.msh", {2});
+    mesh.read_msh_v2_ascii("test_ultrasound.msh", {2});
 
     mesh.write_matlab_mesh_m("mesh_out.m");
 
