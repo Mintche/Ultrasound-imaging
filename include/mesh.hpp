@@ -5,13 +5,10 @@
 #include <cctype>
 #include <cstdint>
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <utility>
-#include <vector>
 
 #include "math.hpp" // for complexe (std::complex<double>)
 
