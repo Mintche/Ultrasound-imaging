@@ -49,7 +49,7 @@ public:
     // -------------------------------------------------------------------------
     // 3. Quadrature de Gauss
     // -------------------------------------------------------------------------
-    [cite_start]// Voir le TABLEAU page 5 du PDF [cite: 157, 158]
+    // Voir le TABLEAU page 5 du PDF
     static std::vector<QuadraturePoint> get_quadrature_points() {
         std::vector<QuadraturePoint> qp;
         
@@ -63,8 +63,8 @@ public:
     // -------------------------------------------------------------------------
     // 4. Assemblage de la Matrice de Rigidité (Stiffness) A
     // -------------------------------------------------------------------------
-    [cite_start]// A_ij = Integrale( grad(wi) . grad(wj) ) [cite: 116, 129]
-    static void assemble_stiffness(const Mesh& mesh, ProfileMatrix<complexe>& A) {
+    // A_ij = Integrale( grad(wi) . grad(wj) )
+    static void assemble_stiffness(const MeshP2& mesh, ProfileMatrix<complexe>& A) {
         // Récupérer les points de quadrature
         auto qp = get_quadrature_points();
         
@@ -109,8 +109,8 @@ public:
     // -------------------------------------------------------------------------
     // 5. Assemblage de la Matrice de Masse B
     // -------------------------------------------------------------------------
-    [cite_start]// B_ij = Integrale( k^2 * wi * wj ) [cite: 118, 130]
-    static void assemble_mass(const Mesh& mesh, ProfileMatrix<complexe>& B, 
+    // B_ij = Integrale( k^2 * wi * wj )
+    static void assemble_mass(const MeshP2& mesh, ProfileMatrix<complexe>& B, 
                               double k0, double k_d_val) {
         auto qp = get_quadrature_points();
         std::vector<double> phi(6);
@@ -121,7 +121,7 @@ public:
             // TODO 2: Déterminer la valeur de k^2 pour ce triangle
             // Si tri.physical_tag indique un défaut -> utiliser k_d_val
             // Sinon -> utiliser k0
-            [cite_start]// Voir section 1.2 "Modélisation des défauts" [cite: 54]
+            // Voir section 1.2 "Modélisation des défauts" [cite: 54]
 
             // Boucle quadrature
             for (const auto& q : qp) {
