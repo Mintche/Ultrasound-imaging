@@ -112,6 +112,24 @@ public:
         return res;
     }
 
+    FullMatrix<T> operator*(const FullMatrix<T>& M) const {
+        if (n_cols != M.n_rows) {
+            throw invalid_argument("Erreur: Dimensions incompatibles pour la multiplication matricielle.");
+        }
+        FullMatrix<T> res(n_rows, M.n_cols);
+        for(int i = 0; i < n_rows; ++i) {
+            for(int j = 0; j < M.n_cols; ++j) {
+                T sum = T(0);
+                for(int k = 0; k < n_cols; ++k) {
+                    sum += (*this)(i, k) * M(k, j);
+                }
+                res(i, j) = sum;
+            }
+        }
+        return res;
+    }
+    
+
     void operator+=(const FullMatrix<T>& M){
         // vérification de la taille
         if (n_rows != M.n_rows || n_cols != M.n_cols){
@@ -131,6 +149,8 @@ public:
             coefs[i] -= M.coefs[i];
         }
     }
+
+    
 
     // Résolution via pivot de Gauss
 
@@ -193,6 +213,33 @@ public:
             }
             x[i] /= A(i, i);
         }
+    }
+
+    // Transposée
+    FullMatrix<T> transpose() const {
+        FullMatrix<T> res(n_cols, n_rows);
+        for(int i = 0; i < n_rows; ++i) {
+            for(int j = 0; j < n_cols; ++j) {
+                res(j, i) = (*this)(i, j);
+            }
+        }
+        return res;
+    }
+
+    // Inverse (calculée colonne par colonne via solve)
+    FullMatrix<T> inverse() const {
+        if (n_rows != n_cols) throw logic_error("Erreur: Inversion d'une matrice non carrée.");
+        FullMatrix<T> res(n_rows, n_cols);
+        FullMatrix<T> tmp = *this; // Copie locale car solve modifie l'objet (pivot)
+        vector<T> b(n_rows), x(n_rows);
+
+        for(int j = 0; j < n_cols; ++j) {
+            fill(b.begin(), b.end(), T(0));
+            b[j] = T(1); // Colonne j de la matrice identité
+            tmp.solve(x, b); // Résout A * x = e_j
+            for(int i = 0; i < n_rows; ++i) res(i, j) = x[i];
+        }
+        return res;
     }
 
     void print(ostream& os) const {

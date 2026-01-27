@@ -7,6 +7,9 @@
 #include "math.hpp" // Ta classe matrice
 #include "mesh.hpp" // La classe maillage
 
+using namespace std;
+using namespace usim;
+
 // Structure pour stocker un point d'intégration (Gauss)
 struct QuadraturePoint {
     double x, y; // Coordonnées sur le triangle de référence
@@ -18,100 +21,197 @@ public:
     // -------------------------------------------------------------------------
     // 1. Fonctions de base P2 (Shape Functions) sur le triangle de référence
     // -------------------------------------------------------------------------
-    // Remplir le vecteur phi avec les valeurs des 6 fonctions de base au point (x,y)
+
     // Ordre des noeuds : 0,1,2 (sommets) puis 3,4,5 (milieux)
-    static void evaluate_shape_functions(double x, double y, std::vector<double>& phi) {
-        // Astuce : utilise les coordonnées barycentriques
-        double L1 = 1 - x - y;
-        double L2 = x;
-        double L3 = y;
+    static void evaluate_shape_functions(double x, double y, vector<double>& phi) {
 
-        // TODO: Implémenter les formules pour les sommets (phi[0] à phi[2])
-        phi[0] = L1 * (2 * L1 - 1);
-        phi[1] = L2 * (2 * L2 - 1);
-        phi[2] = L3 * (2 * L3 - 1);
+        phi[0] = (1-x-y)*(1-x-2*y);
+        phi[1] = x*2*(x-0.5);
+        phi[2] = y*2*(y-0.5);
 
-        // TODO: Implémenter les formules pour les milieux (phi[3] à phi[5])
-        phi[3] = 4 * L1 * L2;
-        phi[4] = 4 * L2 * L3;
-        phi[5] = 4 * L3 * L1;
+        phi[3] = 4*(1-x-y)*y;
+        phi[4] = 4*(1-x-y)*x;
+        phi[5] = 4*x*y;
     }
 
     // -------------------------------------------------------------------------
     // 2. Gradients des fonctions de base
     // -------------------------------------------------------------------------
-    // Remplir le vecteur grads avec les dérivées (d/dx, d/dy)
-    static void evaluate_gradients(double x, double y, std::vector<std::pair<double, double>>& grads) {
-        // TODO: Calculer les dérivées partielles par rapport à x et y
-        // Attention : dL1/dx = -1, dL2/dx = 1, etc.
-        
-        // ex pour le noeud 0 :
-        // grads[0].first  = ... (dérivée / x)
-        // grads[0].second = ... (dérivée / y)
+
+    static void evaluate_gradients(double x, double y, FullMatrix<double>& grads) {
+
+        grads(0,0) = 2*x+3*y-2;  // dérivée par rapport à x
+        grads(0,1) = 2*x+4*y-3; // dérivée par rapport à y
+
+        grads(1,0) = 4*x-1;
+        grads(1,1) = 0;
+
+        grads(2,0) = 4*y-1;
+        grads(2,1) = 0;
+
+        grads(3,0) = -4*y*x;
+        grads(3,1) = 4*(1-x-2*y);
+
+        grads(4,0) = 4*(1-y-2*x);
+        grads(4,1) = -4*x*y;
+
+        grads(5,0) = 4*y;
+        grads(5,1) = 4*x;
     }
 
     // -------------------------------------------------------------------------
     // 3. Quadrature de Gauss
     // -------------------------------------------------------------------------
-    // Voir le TABLEAU page 5 du PDF
-    static std::vector<QuadraturePoint> get_quadrature_points() {
-        std::vector<QuadraturePoint> qp;
-        
-        // TODO: Remplir le vecteur avec les 7 points de Gauss.
-        // Attention aux symétries indiquées dans le tableau (s1, s1), (s1, s3), etc.
-        // Attention : Vérifier si les poids doivent être multipliés par 0.5 (aire du triangle ref)
+
+    static vector<QuadraturePoint> get_quadrature_points() {
+
+        double s0 = 1/3.;
+        double s1 = (6-sqrt(15))/21.;
+        double s2 = (6+sqrt(15))/21.;
+        double s3 = (9+2*sqrt(15))/21.;
+        double s4 = (9-2*sqrt(15))/21.;
+
+        double eta0 = 9/80.;
+        double eta1 = (155-sqrt(15))/2400.;
+        double eta2 = (155+sqrt(15))/2400.;
+
+        vector<QuadraturePoint> qp(7);
+
+        qp[0].x = s0;
+        qp[0].y = s0;
+        qp[0].w = eta0;
+
+        qp[1].x = s1;
+        qp[1].y = s1;
+        qp[1].w = eta1;
+
+        qp[2].x = s1;
+        qp[2].y = s3;
+        qp[2].w = eta1;
+
+        qp[3].x = s3;
+        qp[3].y = s1;
+        qp[3].w = eta1;
+
+        qp[4].x = s2;
+        qp[4].y = s2;
+        qp[4].w = eta2;
+
+        qp[5].x = s2;
+        qp[5].y = s4;
+        qp[5].w = eta2;
+
+        qp[6].x = s4;
+        qp[6].y = s2;
+        qp[6].w = eta2;
         
         return qp;
+
     }
 
     // -------------------------------------------------------------------------
-    // 4. Assemblage de la Matrice de Rigidité (Stiffness) A
+    // 4. Calcul du profil de la matrice
+    // -------------------------------------------------------------------------
+
+    static vector<size_t> compute_profile(const MeshP2& mesh) {
+        size_t ndof = mesh.ndof();
+        vector<size_t> p(ndof);
+        
+        // Initialisation : p[i] = i (au moins la diagonale)
+        for(size_t i=0; i<ndof; ++i) p[i] = i;
+
+        // Parcours des éléments pour mettre à jour la largeur de bande
+        for(const auto& tri : mesh.triangles) {
+            for(int i=0; i<6; ++i) {
+                int u = tri.node_ids[i]; // Ligne potentielle
+                for(int j=0; j<6; ++j) {
+                    int v = tri.node_ids[j]; // Colonne potentielle
+                    // Si v < p[u], on élargit le profil
+                    if (v < static_cast<int>(p[u])) {
+                        p[u] = v;
+                    }
+                }
+            }
+        }
+        return p;
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. Assemblage de la Matrice de Rigidité (Stiffness) A
     // -------------------------------------------------------------------------
     // A_ij = Integrale( grad(wi) . grad(wj) )
     static void assemble_stiffness(const MeshP2& mesh, ProfileMatrix<complexe>& A) {
         // Récupérer les points de quadrature
-        auto qp = get_quadrature_points();
+        vector<QuadraturePoint> qp = get_quadrature_points();
         
         // Variables locales pour éviter les allocations dans la boucle
-        std::vector<std::pair<double, double>> dphi_ref(6);
+        FullMatrix<double> dphi_ref(6,2);
         
         // Boucle sur tous les triangles du maillage
         for (const auto& tri : mesh.triangles) {
             
-            // TODO 1: Récupérer les coordonnées des 3 sommets du triangle (p0, p1, p2)
-            
-            // TODO 2: Calculer la Matrice Jacobienne J du passage (Reference -> Réel)
-            // J = [ x1-x0  x2-x0 ]
-            //     [ y1-y0  y2-y0 ]
-            
-            // TODO 3: Calculer le déterminant (detJ) et l'inverse de J
-            // On a besoin de l'inverse pour transformer les gradients : 
-            // Grad_reel = J^(-T) * Grad_ref
+            // Coordonnées des 3 sommets du triangle (p0, p1, p2)
+
+            Point2D p0 = mesh.nodes[tri.node_ids[0]];
+            Point2D p1 = mesh.nodes[tri.node_ids[1]];
+            Point2D p2 = mesh.nodes[tri.node_ids[2]];
+
+            //Passage (Reference -> Réel) F(S) = Bl*S + bl avec bl = S0, Bl = [S1-S0,S2-S0]
+
+            FullMatrix<double> Jac(2,2);
+
+            Jac(0,0) = p1.x-p0.x;
+            Jac(0,1) = p2.x-p0.x;
+
+            Jac(1,0) = p1.y-p0.y;
+            Jac(1,1) = p2.y-p0.y;
+
+            //detJ et l'inverse de J
+
+            double detJac = (p1.x-p0.x)*(p2.y-p0.y)-(p1.y-p0.y)*(p2.x-p0.x);
+
+            FullMatrix<double> invJac = Jac.inverse();
+
+            // Matrice de rigidité élémentaire (6x6) pour ce triangle
+            FullMatrix<double> A_elem(6, 6); // Initialisée à 0
             
             // Boucle sur les points de quadrature
             for (const auto& q : qp) {
                 // Evaluer les gradients sur le triangle de référence
                 evaluate_gradients(q.x, q.y, dphi_ref);
 
-                // Double boucle sur les fonctions de base (i et j de 0 à 5)
-                for (int i = 0; i < 6; ++i) {
-                    for (int j = 0; j < 6; ++j) {
-                        
-                        // TODO 4: Transformer les gradients ref en gradients réels
-                        // dphi_dx_reel = (invJ_11 * dphi_dx_ref + invJ_12 * dphi_dy_ref)
-                        
-                        // TODO 5: Faire le produit scalaire grad_i . grad_j
-                        
-                        // TODO 6: Ajouter à la matrice globale A
-                        // A(noeud_global_i, noeud_global_j) += val * poids * |detJ|
+                // 1. Gradients réels : G_real = dphi_ref * invJac
+                // dphi_ref (6x2) * invJac (2x2) -> G_real (6x2)
+                FullMatrix<double> G_real = dphi_ref * invJac;
+
+                // 2. Contribution locale : G_real * G_real^T
+                // Cela calcule tous les produits scalaires grad_i . grad_j d'un coup
+                FullMatrix<double> contrib = G_real * G_real.transpose();
+
+                // 3. Accumulation pondérée dans K_elem
+                double weight = q.w * std::abs(detJac);
+                
+                // On ajoute manuellement car pas d'opérateur K_elem += contrib * scalar
+                for(int i=0; i<6; ++i) {
+                    for(int j=0; j<6; ++j) {
+                        A_elem(i, j) += contrib(i, j) * weight;
                     }
+                }
+            }
+            
+            // 4. Assemblage dans la matrice globale A (une seule fois par triangle)
+            for(int i=0; i<6; ++i) {
+                int I = tri.node_ids[i];
+                for(int j=0; j<6; ++j) {
+                    int J = tri.node_ids[j];
+                    A(I, J) += complexe(A_elem(i, j), 0.0);
                 }
             }
         }
     }
 
     // -------------------------------------------------------------------------
-    // 5. Assemblage de la Matrice de Masse B
+    // 6. Assemblage de la Matrice de Masse B
     // -------------------------------------------------------------------------
     // B_ij = Integrale( k^2 * wi * wj )
     static void assemble_mass(const MeshP2& mesh, ProfileMatrix<complexe>& B, 
