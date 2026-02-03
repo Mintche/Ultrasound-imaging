@@ -185,7 +185,6 @@ public:
         // Optimisation : Allocation hors de la boucle
         FullMatrix<double> Jac(2,2);
         FullMatrix<double> invJac(2,2);
-        FullMatrix<double> A_elem(6, 6);
         
         for (const auto& tri : mesh.triangles) {
 
@@ -205,11 +204,8 @@ public:
 
             double detJac = (p1.x-p0.x)*(p2.y-p0.y)-(p1.y-p0.y)*(p2.x-p0.x);
 
-            invJac = Jac.inverse(); // Réutilisation (attention: inverse() renvoie une nouvelle matrice, mais on évite la construction de Jac)
+            invJac = Jac.inverse();
 
-            // Matrice de rigidité élémentaire (6x6) pour ce triangle
-            A_elem.fill(0.0); // Réinitialisation
-            
             // Boucle sur les points de quadrature
             for (const auto& q : qp) {
 
@@ -225,7 +221,7 @@ public:
                 double weight = q.w * abs(detJac);
                 
                 for(int i=0; i<6; ++i) {
-                    for(int j=0; j<6; ++j) {
+                    for(int j=0; j<=i; ++j) { // CORRECTION : j <= i pour éviter le double comptage
                         A(tri.node_ids[i], tri.node_ids[j]) += complexe(contrib(i, j) * weight * factor, 0.0);
                     }
                 }
@@ -241,8 +237,6 @@ public:
                               double k0, double k_d_val, double factor = -1.0){
         auto qp = get_quadrature_points();
         vector<double> phi(6);
-        // Optimisation : Allocation hors de la boucle
-        FullMatrix<double> Jac(2,2);
 
         for (const auto& tri : mesh.triangles) {
 
@@ -252,21 +246,11 @@ public:
             Point2D p1 = mesh.nodes[tri.node_ids[1]];
             Point2D p2 = mesh.nodes[tri.node_ids[2]];
 
-            //Passage (Reference -> Réel) F(S) = Bl*S + bl avec bl = S0, Bl = [S1-S0,S2-S0]
-
-            Jac(0,0) = p1.x-p0.x;
-            Jac(0,1) = p2.x-p0.x;
-
-            Jac(1,0) = p1.y-p0.y;
-            Jac(1,1) = p2.y-p0.y;
-
-            //detJ et l'inverse de J
-
+            // detJ (Jacobien géométrique)
             double detJac = (p1.x-p0.x)*(p2.y-p0.y)-(p1.y-p0.y)*(p2.x-p0.x);
 
-            // Note: invJac n'est pas utilisé dans B_matrix, on peut le supprimer
-            
-            double k = (tri.ref == 0 ) ? k0 : k_d_val;
+            // CORRECTION : Utilisation de is_defect pour choisir le bon k
+            double k = (tri.is_defect) ? k_d_val : k0;
 
             // Voir section 1.2 "Modélisation des défauts"
 
@@ -278,7 +262,7 @@ public:
 
                 // Double boucle sur les fonctions de base
                 for (int i = 0; i < 6; ++i) {
-                    for (int j = 0; j < 6; ++j) {
+                    for (int j = 0; j <= i; ++j) { // CORRECTION : j <= i
                         
                         double val = phi[i] * phi[j] * weight * (k * k);
                         

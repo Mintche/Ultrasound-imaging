@@ -91,8 +91,8 @@ void test_assembly_single_triangle() {
     ProfileMatrix<complexe> M(p);
     
     // Assemblage
-    Fem::A_matrix(mesh, K);
-    Fem::B_matrix(mesh, M, 1.0, 1.0); // k0=1, k_d=1
+    Fem::A_matrix(mesh, K, 1.0);
+    Fem::B_matrix(mesh, M, 1.0, 1.0, 1.0); // k0=1, k_d=1
     
     // Vérification Rigidité : K * 1 = 0 (car grad(1) = 0)
     vector<complexe> ones(6, 1.0);
@@ -109,7 +109,7 @@ void test_assembly_single_triangle() {
     complexe total_mass = 0;
     for(auto v : res_M) total_mass += v;
     
-    if(check_close(total_mass, 0.5)) 
+    if(check_close(total_mass, complex<double>(0.5,0.0))) 
         cout << "[OK] Matrice de Masse (integrale correcte)." << endl;
     else 
         cout << "[ECHEC] Matrice de Masse incorrecte (Masse=" << total_mass << ", attendu 0.5)." << endl;

@@ -236,12 +236,13 @@ public:
         if (n_rows != n_cols) throw logic_error("Erreur: Inversion d'une matrice non carrée.");
         FullMatrix<T> res(n_rows, n_cols);
         FullMatrix<T> tmp = *this; // Copie locale car solve modifie l'objet (pivot)
-        vector<T> b(n_rows), x(n_rows);
+        vector<T> b(n_rows, T(0)), x(n_rows);
 
         for(int j = 0; j < n_cols; ++j) {
             b[j] = T(1); // Colonne j de la matrice identité
             tmp.solve(x, b); // Résout A * x = e_j
             for(int i = 0; i < n_rows; ++i) res(i, j) = x[i];
+            b[j] = T(0); // Remise à zéro pour la prochaine itération
         }
         return res;
     }
@@ -293,7 +294,7 @@ private:
 
 public:
 
-    ProfileMatrix(const vector<size_t>& p_in) : n(p_in.size()), p(p_in) {
+    ProfileMatrix(const vector<size_t>& p_in) : n(p_in.size()), p(p_in), is_factorized(false) {
         q.resize(n);
         offsets.resize(n);
         size_t total_size = 0;
