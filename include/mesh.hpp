@@ -355,6 +355,13 @@ public:
         for(const auto& t: triangles) out << t.ref << ";\n";
         out << "];\n\n";
 
+        // IsDef : 0/1 par triangle (1 = défaut)
+        out << "IsDef = zeros(" << triangles.size() << ",1);\n";
+        for (size_t t = 0; t < triangles.size(); ++t) {
+            out << "IsDef(" << (t+1) << ") = " << (triangles[t].is_defect ? 1 : 0) << ";\n";
+        }
+        out << "\n";
+
         out << "EdgeRef = [ ...\n";
         for(const auto& t: triangles){
             out << t.edge_ref[0] << " " << t.edge_ref[1] << " " << t.edge_ref[2] << ";\n";
