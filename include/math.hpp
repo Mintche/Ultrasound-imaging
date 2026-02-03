@@ -150,6 +150,11 @@ public:
         }
     }
 
+    // Remplissage avec une valeur (pour réutilisation sans réallocation)
+    void fill(T val) {
+        std::fill(coefs.begin(), coefs.end(), val);
+    }
+
     // Résolution via pivot de Gauss
 
     void solve(vector<T>& x, const vector<T>& b){
@@ -289,8 +294,10 @@ public:
 
     ProfileMatrix(const vector<size_t>& p_in) : n(p_in.size()), p(p_in) {
         q.resize(n);
+        offsets.resize(n);
         size_t total_size = 0;
         for (size_t i = 0; i < n; i++) {
+            offsets[i] = total_size;
             q[i] = i - p[i] + 1;
             total_size += q[i];
         }

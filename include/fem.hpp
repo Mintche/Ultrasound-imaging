@@ -182,6 +182,10 @@ public:
         vector<QuadraturePoint> qp = get_quadrature_points();
 
         FullMatrix<double> dphi_ref(6,2);
+        // Optimisation : Allocation hors de la boucle
+        FullMatrix<double> Jac(2,2);
+        FullMatrix<double> invJac(2,2);
+        FullMatrix<double> A_elem(6, 6);
         
         for (const auto& tri : mesh.triangles) {
 
@@ -190,8 +194,6 @@ public:
             Point2D p2 = mesh.nodes[tri.node_ids[2]];
 
             //Passage (Reference -> Réel) F(S) = Bl*S + bl avec bl = S0, Bl = [S1-S0,S2-S0]
-
-            FullMatrix<double> Jac(2,2);
 
             Jac(0,0) = p1.x-p0.x;
             Jac(0,1) = p2.x-p0.x;
@@ -203,10 +205,10 @@ public:
 
             double detJac = (p1.x-p0.x)*(p2.y-p0.y)-(p1.y-p0.y)*(p2.x-p0.x);
 
-            FullMatrix<double> invJac = Jac.inverse();
+            invJac = Jac.inverse(); // Réutilisation (attention: inverse() renvoie une nouvelle matrice, mais on évite la construction de Jac)
 
             // Matrice de rigidité élémentaire (6x6) pour ce triangle
-            FullMatrix<double> A_elem(6, 6); // Initialisée à 0
+            A_elem.fill(0.0); // Réinitialisation
             
             // Boucle sur les points de quadrature
             for (const auto& q : qp) {
@@ -239,6 +241,8 @@ public:
                               double k0, double k_d_val, double factor = -1.0){
         auto qp = get_quadrature_points();
         std::vector<double> phi(6);
+        // Optimisation : Allocation hors de la boucle
+        FullMatrix<double> Jac(2,2);
 
         for (const auto& tri : mesh.triangles) {
 
@@ -250,8 +254,6 @@ public:
 
             //Passage (Reference -> Réel) F(S) = Bl*S + bl avec bl = S0, Bl = [S1-S0,S2-S0]
 
-            FullMatrix<double> Jac(2,2);
-
             Jac(0,0) = p1.x-p0.x;
             Jac(0,1) = p2.x-p0.x;
 
@@ -262,7 +264,7 @@ public:
 
             double detJac = (p1.x-p0.x)*(p2.y-p0.y)-(p1.y-p0.y)*(p2.x-p0.x);
 
-            FullMatrix<double> invJac = Jac.inverse();
+            // Note: invJac n'est pas utilisé dans B_matrix, on peut le supprimer
             
             double k = (tri.ref == 0 ) ? k0 : k_d_val;
 
@@ -415,9 +417,20 @@ public:
         int Ndof = E.rows(); // Attention : il faut ajouter une méthode rows() à FullMatrix ou utiliser mesh.ndof()
         int Nmodes = D.rows();
 
-        for (int i = 0; i < Ndof; ++i) {
+        // Optimisation : Identifier les DOFs actifs (ceux sur le bord)
+        // E est creuse (non nulle seulement sur le bord), on évite la boucle N^2
+        vector<int> active_dofs;
+        active_dofs.reserve(Ndof / 10); // Estimation
+        for(int i=0; i<Ndof; ++i) {
+            for(int n=0; n<Nmodes; ++n) {
+                if(abs(E(i,n)) > 1e-14) { active_dofs.push_back(i); break; }
+            }
+        }
+
+        for (int i : active_dofs) {
             
-            for (int j = 0; j <= i; ++j) { // Symétrie : j <= i
+            for (int j : active_dofs) { 
+                if (j > i) continue; // Symétrie : j <= i
                 // Calcul de T_ij = Somme_n ( E_in * D_nn * E_jn )
                 complexe val_T_ij = 0.0;
                 bool interact = false;
