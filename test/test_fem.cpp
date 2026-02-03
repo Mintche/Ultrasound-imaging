@@ -91,8 +91,8 @@ void test_assembly_single_triangle() {
     ProfileMatrix<complexe> M(p);
     
     // Assemblage
-    Fem::assemble_stiffness(mesh, K);
-    Fem::assemble_mass(mesh, M, 1.0, 1.0); // k=1 partout
+    Fem::A_matrix(mesh, K);
+    Fem::B_matrix(mesh, M, 1.0, 1.0); // k0=1, k_d=1
     
     // Vérification Rigidité : K * 1 = 0 (car grad(1) = 0)
     vector<complexe> ones(6, 1.0);
@@ -120,6 +120,7 @@ void test_boundary_assembly() {
     
     // Maillage 1 triangle, l'arête 0 (noeuds 0-1) est sur le bord (tag 10)
     MeshP2 mesh;
+    mesh.Ly = 1.0; // Nécessaire pour compute_E
     mesh.nodes.resize(6);
     mesh.nodes[0] = {0.0, 0.0, 0};
     mesh.nodes[1] = {1.0, 0.0, 1};
@@ -138,18 +139,16 @@ void test_boundary_assembly() {
     tri.edge_ref[2] = 0;
     mesh.triangles.push_back(tri);
     
-    vector<size_t> p = Fem::compute_profile(mesh);
-    ProfileMatrix<complexe> E(p);
-    
-    // Assemblage sur le bord 10
-    Fem::assemble_E(mesh, E, 10);
+    // compute_E retourne une FullMatrix (Ndof x Nmodes)
+    // On teste avec 1 mode (n=0), tag 10, k0=1.0
+    FullMatrix<complexe> E = Fem::compute_E(mesh, 1, 10, 1.0);
     
     // L'intégrale sur le bord (longueur 1) de la fonction constante 1 doit valoir 1.
-    // Somme des éléments de E = 1^T * E * 1
-    vector<complexe> ones(6, 1.0);
-    vector<complexe> res = E * ones;
+    // Pour n=0, c_0 = sqrt(1/Ly) = 1.
+    // Somme des éléments de la colonne 0 de E = Int(sum(phi_i) * c_0) = Int(1 * 1) = 1.
+    
     complexe sum = 0;
-    for(auto v : res) sum += v;
+    for(int i=0; i<E.rows(); ++i) sum += E(i, 0);
     
     if(check_close(sum, 1.0))
         cout << "[OK] Matrice de Bord (integrale longueur correcte)." << endl;

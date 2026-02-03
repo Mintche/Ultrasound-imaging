@@ -108,5 +108,33 @@ int main() {
         cout << "[OK] Exception capturee : " << e.what() << endl;
     }
 
+    // -------------------------------------------------------
+    // TEST 4 : FullMatrix Operations
+    // -------------------------------------------------------
+    cout << "\n--- Test 4 : FullMatrix Operations ---" << endl;
+    
+    // Test Inverse 2x2
+    FullMatrix<double> M(2, 2);
+    M(0,0) = 4.0; M(0,1) = 3.0;
+    M(1,0) = 3.0; M(1,1) = 2.0;
+    
+    // Det = 8 - 9 = -1. Inv = 1/-1 * [2 -3; -3 4] = [-2 3; 3 -4]
+    FullMatrix<double> InvM = M.inverse();
+    
+    if(abs(InvM(0,0) - (-2.0)) < 1e-9 && abs(InvM(1,1) - (-4.0)) < 1e-9)
+        cout << "[OK] Inversion FullMatrix 2x2 correcte." << endl;
+    else
+        cout << "[ECHEC] Inversion FullMatrix 2x2 incorrecte." << endl;
+    
+    // Test Solve
+    vector<double> b_full = {1.0, 2.0};
+    vector<double> x_full(2);
+    M.solve(x_full, b_full); // x = InvM * b = [-2 3; 3 -4]*[1;2] = [4; -5]
+    
+    if(abs(x_full[0] - 4.0) < 1e-9 && abs(x_full[1] - (-5.0)) < 1e-9)
+        cout << "[OK] Resolution FullMatrix Ax=b correcte." << endl;
+    else
+        cout << "[ECHEC] Resolution FullMatrix Ax=b incorrecte." << endl;
+
     return 0;
 }
