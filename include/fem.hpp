@@ -304,7 +304,7 @@ public:
     // 9. Assemblage générique d'une matrice de masse surfacique (Bord)
     // -------------------------------------------------------------------------
     // Calcule Integrale_Gamma ( coeff * u * v ) sur les arêtes ayant le tag 'boundary_tag'
-    static void assemble_E(const MeshP2& mesh, ProfileMatrix<complexe>& E, int boundary_tag, complex<double> coeff = 1.0) {
+    static void assemble_E(const MeshP2& mesh, FullMatrix<complex<double>>& E, int N, int boundary_tag) {
         auto qp = get_quadrature_points_1d();
         vector<double> phi_1d(3);
         double h = mesh.Ly; // Hauteur du domaine 
@@ -333,21 +333,31 @@ public:
                         double weight = q.w;
                         evaluate_shape_functions_1d(t, phi_1d);
 
-                        for (int i = 0; i < 3; ++i) {
-                            for (int j = 0; j < 3; ++j) {
-                                double c_j = evaluate_c_1d(0.5 * ( (B.x + A.x) + t * (B.x - A.x) ), h, j);
-                                complex<double> val = coeff * phi_1d[i] * phi_1d[j] * c_j * weight * detJac;
-                                E(nodes_global[i], nodes_global[j]) += val;           
+                        for (int i = 0; i < 3 ; i++) {
+                            for (int n = 0; n < N; n++) {
+                                double c_n = evaluate_c_1d(0.5 * ( (B.x + A.x) + t * (B.x - A.x) ), h, n);
+                                complex<double> val = phi_1d[i] * phi_1d[n] * c_n * weight * detJac;
+                                E(nodes_global[i], n) += val;           
                             }
                         }
                     } 
                 }
             }
-
         }
     }
 
-    
+    static void assemble_D(const MeshP2& mesh, FullMatrix<complex<double>>& D, int boundary_tag, int N, int total_dofs, double k0) {
+        int mini = min(total_dofs, N);
+            for (int j =0; j<mini; j++) {
+                D(j,j) = complex<double>(0.0,1.0)* compute_beta(k0, mesh.Ly, j);
+            }       
+    }
+
+    static void assemble_T(FullMatrix<complex<double>>& T, FullMatrix<complex<double>>& D, FullMatrix<complex<double>>& E, int N, int boundary_tag){
+        T = E * D * E.transpose();
+    }
+        
+
 
 
 // -------------------------------------------------------------------------
