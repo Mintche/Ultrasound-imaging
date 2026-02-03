@@ -99,10 +99,7 @@ inline void p2_basis_1d(double s, double& phi_m1, double& phi_0, double& phi_p1)
 //
 // Here w_I restricted to an edge is a 1D quadratic Lagrange basis.
 // We integrate each boundary edge with a 3-pt Gauss-Legendre rule on [-1,1].
-inline FullMatrix<complexe> build_E_on_boundary(const MeshP2& mesh,
-                                                int boundary_tag,
-                                                int N,
-                                                double h){
+inline FullMatrix<complexe> build_E_on_boundary(const MeshP2& mesh, int boundary_tag, int N, double h){
     const int ndof = static_cast<int>(mesh.ndof());
     const int nm   = N + 1;
     FullMatrix<complexe> E(ndof, nm);
@@ -159,9 +156,7 @@ inline FullMatrix<complexe> build_E_on_boundary(const MeshP2& mesh,
 }
 
 // Modal coefficients on one boundary: coeff[n] = (u|Sigma, c_n) ≈ Σ_I U_I * E(I,n)
-inline std::vector<complexe> modal_decomposition(const FullMatrix<complexe>& E,
-                                                 const std::vector<complexe>& U,
-                                                 int nm){
+inline std::vector<complexe> modal_decomposition(const FullMatrix<complexe>& E, const std::vector<complexe>& U, int nm){
     const int ndof = static_cast<int>(U.size());
     std::vector<complexe> a(static_cast<size_t>(nm), complexe(0.0));
     for(int n=0;n<nm;++n){
@@ -296,11 +291,7 @@ public:
     // val = log(1 / ||H_eps(z)||).
     //
     // x and y are in the *centered* coordinate system of the statement.
-    void image_grid(double x_min, double x_max,
-                    double y_min, double y_max,
-                    int nx, int ny,
-                    double eps_reg,
-                    const std::string& out_xyz_file) const
+    void image_grid(double x_min, double x_max, double y_min, double y_max, int nx, int ny, double eps_reg,const std::string& out_xyz_file) const
     {
         if(nx <= 1 || ny <= 1) throw std::invalid_argument("image_grid: nx,ny must be > 1");
         if(eps_reg <= 0.0) throw std::invalid_argument("image_grid: eps_reg must be > 0");

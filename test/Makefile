@@ -11,6 +11,9 @@ test_run: test_math.cpp ../include/math.hpp
 test_run_mesh: test_mesh.cpp ../include/mesh.hpp
 	$(CC) $(FLAGS) test_mesh.cpp -o test_mesh.x
 
+test_run_lin_sampl: test_linear_sampling.cpp ../include/linear_sampling.hpp
+	$(CC) $(FLAGS) test_linear_sampling.cpp -o test_linear_sampling.x
+
 # Nettoyage
 clean:
 	rm -f *.x
