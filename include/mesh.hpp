@@ -99,6 +99,31 @@ public:
     std::vector<Point2D>    nodes;      // includes generated mid-edge nodes
     std::vector<TriangleP2> triangles;  // P2 triangles
 
+    double xmin = 0.0, xmax = 0.0;
+    double ymin = 0.0, ymax = 0.0;
+    double Lx   = 0.0, Ly   = 0.0;
+
+    void compute_bbox_and_dims(){
+        if(nodes.empty()){
+            xmin = xmax = ymin = ymax = 0.0;
+            Lx = Ly = 0.0;
+            return;
+        }
+
+        xmin = xmax = nodes[0].x;
+        ymin = ymax = nodes[0].y;
+
+        for(const auto& p : nodes){
+            if(p.x < xmin) xmin = p.x;
+            if(p.x > xmax) xmax = p.x;
+            if(p.y < ymin) ymin = p.y;
+            if(p.y > ymax) ymax = p.y;
+        }
+
+        Lx = xmax - xmin;
+        Ly = ymax - ymin;
+    }
+
     // Read a .msh (MSH v2 ASCII) and enrich it to P2.
     // defect_tags: if not empty, triangles with ref in defect_tags are marked as defect.
     void read_msh_v2_ascii(const std::string& filename, const std::vector<int>& defect_tags = {}) {
@@ -189,6 +214,8 @@ public:
             line = detail::trim(line);
             if(line=="$EndNodes") break;
         }
+
+        compute_bbox_and_dims();
 
         // --- Find and parse $Elements ---
         while(std::getline(in,line)){
