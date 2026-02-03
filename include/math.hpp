@@ -150,9 +150,11 @@ public:
         }
     }
 
-    // Remplissage avec une valeur (pour réutilisation sans réallocation)
+    // Remplissage avec une valeur
     void fill(T val) {
-        std::fill(coefs.begin(), coefs.end(), val);
+        for (size_t i = 0; i < coefs.size(); i++){
+            coefs[i] = val;
+        }
     }
 
     // Résolution via pivot de Gauss
