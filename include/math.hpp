@@ -239,7 +239,6 @@ public:
         vector<T> b(n_rows), x(n_rows);
 
         for(int j = 0; j < n_cols; ++j) {
-            fill(b.begin(), b.end(), T(0));
             b[j] = T(1); // Colonne j de la matrice identité
             tmp.solve(x, b); // Résout A * x = e_j
             for(int i = 0; i < n_rows; ++i) res(i, j) = x[i];

@@ -240,7 +240,7 @@ public:
     static void B_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& B, 
                               double k0, double k_d_val, double factor = -1.0){
         auto qp = get_quadrature_points();
-        std::vector<double> phi(6);
+        vector<double> phi(6);
         // Optimisation : Allocation hors de la boucle
         FullMatrix<double> Jac(2,2);
 
