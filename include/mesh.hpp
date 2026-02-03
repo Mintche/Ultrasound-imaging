@@ -5,6 +5,7 @@
 #include <cctype>
 #include <cstdint>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -98,9 +99,34 @@ public:
     std::vector<Point2D>    nodes;      // includes generated mid-edge nodes
     std::vector<TriangleP2> triangles;  // P2 triangles
 
+    double xmin = 0.0, xmax = 0.0;
+    double ymin = 0.0, ymax = 0.0;
+    double Lx   = 0.0, Ly   = 0.0;
+
+    void compute_bbox_and_dims(){
+        if(nodes.empty()){
+            xmin = xmax = ymin = ymax = 0.0;
+            Lx = Ly = 0.0;
+            return;
+        }
+
+        xmin = xmax = nodes[0].x;
+        ymin = ymax = nodes[0].y;
+
+        for(const auto& p : nodes){
+            if(p.x < xmin) xmin = p.x;
+            if(p.x > xmax) xmax = p.x;
+            if(p.y < ymin) ymin = p.y;
+            if(p.y > ymax) ymax = p.y;
+        }
+
+        Lx = xmax - xmin;
+        Ly = ymax - ymin;
+    }
+
     // Read a .msh (MSH v2 ASCII) and enrich it to P2.
     // defect_tags: if not empty, triangles with ref in defect_tags are marked as defect.
-    void read_msh_v2_ascii(const std::string& filename,  const std::vector<int>& defect_tags = {}) {
+    void read_msh_v2_ascii(const std::string& filename, const std::vector<int>& defect_tags = {}) {
 
         std::ifstream in(filename);
         if(!in) throw std::runtime_error("MeshP2: cannot open file: " + filename);
@@ -170,13 +196,14 @@ public:
 
         for(long long i=0;i<nb_nodes;i++){
             std::getline(in,line);
-            auto vals = detail::split_ll(line);
-            if(vals.size()<4) throw std::runtime_error("MeshP2: invalid node line: " + line);
-            long long tag = vals[0];
-            double x=0,y=0;
+            // Node line in MSH2 is: <nodeTag> <x> <y> <z>
+            // IMPORTANT: coordinates are floating point, so we must NOT parse them as integers.
+            long long tag = 0;
+            double x=0.0, y=0.0, z=0.0;
             {
                 std::stringstream ss(line);
-                ss >> tag >> x >> y; // ignore z
+                if(!(ss >> tag >> x >> y >> z))
+                    throw std::runtime_error("MeshP2: invalid node line: " + line);
             }
             Point2D p; p.x=x; p.y=y; p.id=static_cast<int>(nodes.size());
             nodes.push_back(p);
@@ -187,6 +214,8 @@ public:
             line = detail::trim(line);
             if(line=="$EndNodes") break;
         }
+
+        compute_bbox_and_dims();
 
         // --- Find and parse $Elements ---
         while(std::getline(in,line)){
@@ -325,6 +354,13 @@ public:
         out << "RefTri = [ ...\n";
         for(const auto& t: triangles) out << t.ref << ";\n";
         out << "];\n\n";
+
+        // IsDef : 0/1 par triangle (1 = défaut)
+        out << "IsDef = zeros(" << triangles.size() << ",1);\n";
+        for (size_t t = 0; t < triangles.size(); ++t) {
+            out << "IsDef(" << (t+1) << ") = " << (triangles[t].is_defect ? 1 : 0) << ";\n";
+        }
+        out << "\n";
 
         out << "EdgeRef = [ ...\n";
         for(const auto& t: triangles){
