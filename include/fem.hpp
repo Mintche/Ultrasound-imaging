@@ -144,7 +144,7 @@ public:
         // 1. Profil standard basé sur les triangles
         vector<size_t> p = compute_profile(mesh);
 
-        // 2. Élargissement du profil pour les frontières (DtN)
+        // 2. Élargissement du profil pour les frontières
 
         for (int tag : boundary_tags) {
             vector<int> boundary_nodes;
@@ -221,7 +221,7 @@ public:
                 double weight = q.w * abs(detJac);
                 
                 for(int i=0; i<6; ++i) {
-                    for(int j=0; j<=i; ++j) { // CORRECTION : j <= i pour éviter le double comptage
+                    for(int j=0; j<=i; ++j) {
                         A(tri.node_ids[i], tri.node_ids[j]) += complexe(contrib(i, j) * weight * factor, 0.0);
                     }
                 }
@@ -262,7 +262,7 @@ public:
 
                 // Double boucle sur les fonctions de base
                 for (int i = 0; i < 6; ++i) {
-                    for (int j = 0; j <= i; ++j) { // CORRECTION : j <= i
+                    for (int j = 0; j <= i; ++j) {
                         
                         double val = phi[i] * phi[j] * weight * (k * k);
                         
@@ -278,7 +278,7 @@ public:
     // -------------------------------------------------------------------------
     static vector<QuadraturePoint> get_quadrature_points_1d(){
         vector<QuadraturePoint> qp(3);
-        double sqrt35 = sqrt(3/5.); // sqrt(3/5)
+        double sqrt35 = sqrt(3/5.);
         
         qp[0].x = -sqrt35; qp[0].w = 5.0/9.0;
         qp[1].x = 0.0;     qp[1].w = 8.0/9.0;
@@ -415,13 +415,11 @@ public:
             
             for (int j : active_dofs) { 
                 if (j > i) continue; // Symétrie : j <= i
-                // Calcul de T_ij = Somme_n ( E_in * D_nn * E_jn )
                 complexe val_T_ij = 0.0;
                 bool interact = false;
                 
                 for (int n = 0; n < Nmodes; ++n) {
-                    // D est diagonale, on prend D(n,n)
-                    // T = E D E^T => T_ij = sum_k E_ik D_kk (E^T)_kj = sum_k E_ik D_kk E_jk
+
                     complexe term = E(i, n) * D(n, n) * E(j, n);
                     if (abs(term) > 1e-14) {
                         val_T_ij += term;
@@ -441,16 +439,12 @@ public:
     // -------------------------------------------------------------------------
 
     static vector<complexe> assemble_source_vector(const MeshP2& mesh, 
-                                               const FullMatrix<complexe>& E_minus, // E sur Sigma_-L
+                                               const FullMatrix<complexe>& E_minus,
                                                int n_inc, 
                                                double k0, double L) {
     
         int Ndof = mesh.ndof();
         vector<complexe> G(Ndof, 0.0);
-
-        // Calcul du coefficient scalaire : -2 * i * beta_n * exp(-i * beta_n * L)
-        // Attention le PDF dit exp(-i * beta * L) mais verifiez le signe selon votre convention de phase
-        // Page 3, eq (79) : g- = -2i beta_n c_n e^{-i beta_n L}
         
         complexe beta = compute_beta(k0, mesh.Ly, n_inc);
         complexe coeff = -2.0 * complex<double>(0,1) * beta * exp(-complex<double>(0,1) * beta * L);
