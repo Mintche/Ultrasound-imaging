@@ -287,7 +287,7 @@ public:
     }
 
     // -------------------------------------------------------------------------
-    // 8. Fonctions de forme 1D P2 sur [-1, 1]
+    // 8. Fonctions de forme 1D P2 sur [-1, 1] et calcul de c_n
     // -------------------------------------------------------------------------
     // phi[0] : t=-1 (gauche), phi[1] : t=1 (droite), phi[2] : t=0 (milieu)
     static void evaluate_shape_functions_1d(double t, vector<double>& phi) {
@@ -296,59 +296,68 @@ public:
         phi[2] = 1.0 - t * t;         // Milieu
     }
 
+    static double evaluate_c_1d(double x, double h, int n) {
+        return (2.0 / h)*cos(n*M_PI * x / h);        
+    }
+
     // -------------------------------------------------------------------------
     // 9. Assemblage générique d'une matrice de masse surfacique (Bord)
     // -------------------------------------------------------------------------
     // Calcule Integrale_Gamma ( coeff * u * v ) sur les arêtes ayant le tag 'boundary_tag'
-    static void assemble_boundary_mass(const MeshP2& mesh, ProfileMatrix<complexe>& M, int boundary_tag, complex<double> coeff = 1.0) {
+    static void assemble_E(const MeshP2& mesh, ProfileMatrix<complexe>& E, int boundary_tag, complex<double> coeff = 1.0) {
         auto qp = get_quadrature_points_1d();
         vector<double> phi_1d(3);
+        double h = mesh.Ly; // Hauteur du domaine 
         
         for (const auto& tri : mesh.triangles) {
             for (int edge_i = 0; edge_i < 3; ++edge_i) {
                 // Si l'arête courante possède le tag recherché
                 if (tri.edge_ref[edge_i] == boundary_tag) {
-                    
-                    // Indices locaux des noeuds de l'arête dans le triangle P2
-                    // Arête 0 (noeuds 0-1) -> milieu 3
-                    // Arête 1 (noeuds 1-2) -> milieu 4
-                    // Arête 2 (noeuds 2-0) -> milieu 5
+                    // Calcul de F' pour cette arête
                     int idx_A = edge_i;
                     int idx_B = (edge_i + 1) % 3;
                     int idx_M = edge_i + 3;
-                    
-                    int nodes_global[3] = {tri.node_ids[idx_A], tri.node_ids[idx_B], tri.node_ids[idx_M]};
-                    
-                    // Calcul de la longueur de l'arête (Jacobien 1D)
-                    Point2D pA = mesh.nodes[nodes_global[0]];
-                    Point2D pB = mesh.nodes[nodes_global[1]];
-                    double length = sqrt(pow(pB.x - pA.x, 2) + pow(pB.y - pA.y, 2));
-                    double detJac = length / 2.0; // Passage de [-1,1] (longueur 2) au segment réel
-                    
+
+                    int nodes_global[3] = {
+                        tri.node_ids[idx_A],
+                        tri.node_ids[idx_B], 
+                        tri.node_ids[idx_M]
+                    };  
+                    Point2D A = mesh.nodes[nodes_global[0]];
+                    Point2D B = mesh.nodes[nodes_global[1]];
+                    double edge_length = sqrt((B.x - A.x)*(B.x - A.x) + (B.y - A.y)*(B.y - A.y));
+                    double detJac = edge_length / 2.0;
+
                     for (const auto& q : qp) {
-                        evaluate_shape_functions_1d(q.x, phi_1d);
-                        double weight = q.w * detJac;
-                        
+                        double t = q.x; // Coordonnée sur l'arête de référence [-1,1]
+                        double weight = q.w;
+                        evaluate_shape_functions_1d(t, phi_1d);
+
                         for (int i = 0; i < 3; ++i) {
                             for (int j = 0; j < 3; ++j) {
-                                complexe val = phi_1d[i] * phi_1d[j] * weight * coeff;
-                                M(nodes_global[i], nodes_global[j]) += val;
+                                double c_j = evaluate_c_1d(0.5 * ( (B.x + A.x) + t * (B.x - A.x) ), h, j);
+                                complex<double> val = coeff * phi_1d[i] * phi_1d[j] * c_j * weight * detJac;
+                                E(nodes_global[i], nodes_global[j]) += val;           
                             }
                         }
-                    }
+                    } 
                 }
             }
+
         }
     }
 
-    // Wrappers pour les matrices E et G (à appeler avec le bon tag de bord)
-    static void assemble_E(const MeshP2& mesh, ProfileMatrix<complexe>& E, int tag) {
-        assemble_boundary_mass(mesh, E, tag);
+    
+
+
+// -------------------------------------------------------------------------
+// 10. Calcul de Beta_n
+// -------------------------------------------------------------------------
+
+    complexe compute_beta(double k0, double h, int n) {
+        return sqrt(complexe(k0*k0 - (M_PI*n/h)*(M_PI*n/h), 0.0));
     }
 
-    static void assemble_G(const MeshP2& mesh, ProfileMatrix<complexe>& G, int tag) {
-        assemble_boundary_mass(mesh, G, tag);
-    }
 };
 
 #endif
