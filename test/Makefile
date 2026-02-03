@@ -2,7 +2,7 @@ CC = g++
 FLAGS = -I ../include
 
 # Cible par défaut
-all: test_run test_run_mesh
+all: test_run test_run_mesh test_run_lin_sampl
 
 # Compilation
 test_run: test_math.cpp ../include/math.hpp
