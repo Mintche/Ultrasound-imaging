@@ -17,7 +17,7 @@ using namespace usim;
 int main(){
     // 1) Read mesh and infer geometric parameters
     MeshP2 mesh;
-    mesh.read_msh_v2_ascii("test/test_ultrasound.msh", {2});
+    mesh.read_msh_v2_ascii("test_ultrasound.msh", {2});
     mesh.compute_bbox_and_dims();
 
     // In the statement, h is the waveguide height.
