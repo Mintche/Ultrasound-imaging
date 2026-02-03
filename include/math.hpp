@@ -240,6 +240,10 @@ public:
         return res;
     }
 
+    size_t rows(){
+        return n_rows;
+    }
+
     void print(ostream& os) const {
         os << "(";
         for (int i = 0; i < n_rows; i++){
@@ -277,7 +281,9 @@ private:
     vector<T> coefs;
     vector<size_t> p;
     vector<size_t> q;
+    vector<size_t> offsets;
     int n;
+    bool is_factorized;
 
 public:
 
@@ -294,48 +300,15 @@ public:
     // Accès
 
     T operator()(int i, int j) const {
-        if (i >= j) {
-            if (j >= p[i]){
-                size_t index = 0;
-                for (size_t k = 0; k < i; k++) {
-                    index += q[k];
-                }
-                index += j - p[i];
-                return coefs[index];
-            }
-            else{
-                return T(0); 
-            }
-        } else {
-            // Exploite la symétrie de la matrice
-            if (i >= p[j]){
-                size_t index = 0;
-                for (size_t k = 0; k < j; k++) {
-                    index += q[k];
-                }
-                index += i - p[j];
-                return coefs[index];
-            }
-            else{
-                return T(0); 
-            }
-        }
+        if (i < j) std::swap(i, j); // Symétrie
+        if (j < static_cast<int>(p[i])) return T(0);
+        return coefs[offsets[i] + j - p[i]];
     }
     
-    // Accès écriture (Nécessaire pour remplir la matrice)
     T& operator()(int i, int j) {
-        if (i < j) std::swap(i, j); // Symétrie : on se ramène au triangle inférieur
-        
-        if (j < static_cast<int>(p[i])) {
-            throw runtime_error("Erreur: Tentative d'ecriture hors du profil.");
-        }
-
-        size_t index = 0;
-        for (size_t k = 0; k < i; k++) {
-            index += q[k];
-        }
-        index += j - p[i];
-        return coefs[index];
+        if (i < j) std::swap(i, j);
+        if (j < static_cast<int>(p[i])) throw runtime_error("Hors profil");
+        return coefs[offsets[i] + j - p[i]];
     }
 
     // Opérateurs
@@ -375,69 +348,73 @@ public:
         }
     }
 
-    void solve(vector<T>& x, const vector<T>& b) {
-        if (b.size() != static_cast<size_t>(n)) throw invalid_argument("Dimension mismatch");
-        
-        // Copie pour LDL^T (on ne modifie pas la matrice d'origine)
-        ProfileMatrix<T> A_ldl(*this);
-        
-        // Pré-calcul des offsets pour accès rapide
-        vector<size_t> offsets(n);
-        size_t current = 0;
-        for(int i=0; i<n; ++i) {
-            offsets[i] = current;
-            current += A_ldl.q[i];
-        }
+        // Factorisation LDL^T en place
+    void factorize() {
+        if(is_factorized) return; 
 
-        // Factorisation LDL^T
         for (int i = 0; i < n; ++i) {
             T d_val = T(0);
-            int pi = static_cast<int>(A_ldl.p[i]);
+            int pi = static_cast<int>(p[i]);
             
             for (int j = pi; j < i; ++j) {
                 T sum = T(0);
-                int pj = static_cast<int>(A_ldl.p[j]);
-                int start_k = (pi > pj) ? pi : pj;
+                int pj = static_cast<int>(p[j]);
+                int start_k = std::max(pi, pj);
 
+                // Optimisation possible ici avec des pointeurs bruts pour la vitesse
                 for (int k = start_k; k < j; ++k) {
-                    int pk = static_cast<int>(A_ldl.p[k]);
-                    T L_ik = A_ldl.coefs[offsets[i] + k - pi];
-                    T L_jk = A_ldl.coefs[offsets[j] + k - pj];
-                    T D_kk = A_ldl.coefs[offsets[k] + k - pk];
-                    sum += L_ik * L_jk * D_kk;
+                    // L_ik * L_jk * D_kk
+                    // Attention: coefs contient L (triangle inf) et D (diag) mélangés
+                    // L_ik est à (i,k), L_jk à (j,k), D_kk à (k,k)
+                    sum += (*this)(i,k) * (*this)(j,k) * (*this)(k,k);
                 }
                 
-                size_t idx_ij = offsets[i] + j - pi;
-                size_t idx_jj = offsets[j] + j - pj;
+                // Calcul de L_ij
+                // A_ij - sum
+                T val = (*this)(i,j) - sum;
+                // L_ij = val / D_jj
+                (*this)(i,j) = val / (*this)(j,j);
                 
-                T L_ij = (A_ldl.coefs[idx_ij] - sum) / A_ldl.coefs[idx_jj];
-                A_ldl.coefs[idx_ij] = L_ij;
-                d_val += L_ij * L_ij * A_ldl.coefs[idx_jj];
+                // Accumulation pour le calcul de D_ii
+                d_val += (*this)(i,j) * (*this)(i,j) * (*this)(j,j);
             }
+            // D_ii = A_ii - somme(L_ik^2 * D_kk)
+            (*this)(i,i) -= d_val;
             
-            size_t idx_ii = offsets[i] + i - pi;
-            A_ldl.coefs[idx_ii] -= d_val;
-            if (abs(A_ldl.coefs[idx_ii]) < 1e-14) throw runtime_error("Pivot nul");
+            if (abs((*this)(i,i)) < 1e-14) throw runtime_error("Pivot nul dans LDLT");
         }
+        is_factorized = true;
+    }
 
-        // Résolution
+    // Résolution rapide utilisant la factorisation existante
+    void solve(vector<T>& x, const vector<T>& b) {
+        if (!is_factorized) factorize(); // Auto-factorisation si oublié
+        if (b.size() != static_cast<size_t>(n)) throw invalid_argument("Taille invalide");
+        
         x = b;
-        // Descente L z = b
+        
+        // 1. Descente L z = b (L a des 1 sur la diagonale, implicites ou non, ici stockés différemment)
+        // Note: Dans LDL stocké en profil, L_ij est stocké à (i,j) pour i>j.
         for (int i = 0; i < n; ++i) {
             T sum = T(0);
-            int pi = static_cast<int>(A_ldl.p[i]);
+            int pi = static_cast<int>(p[i]);
             for (int j = pi; j < i; ++j) 
-                sum += A_ldl.coefs[offsets[i] + j - pi] * x[j];
-            x[i] -= sum;
+                sum += (*this)(i,j) * x[j];
+            x[i] -= sum; // L_ii est 1, donc pas de division
         }
-        // Diagonale D y = z
-        for (int i = 0; i < n; ++i) 
-            x[i] /= A_ldl.coefs[offsets[i] + i - static_cast<int>(A_ldl.p[i])];
-        // Remontée L^T x = y
+
+        // 2. Diagonale D y = z
+        for (int i = 0; i < n; ++i) {
+            x[i] /= (*this)(i,i);
+        }
+
+        // 3. Remontée L^T x = y
         for (int i = n - 1; i >= 0; --i) {
-            int pi = static_cast<int>(A_ldl.p[i]);
-            for (int j = pi; j < i; ++j) 
-                x[j] -= A_ldl.coefs[offsets[i] + j - pi] * x[i];
+            int pi = static_cast<int>(p[i]);
+            for (int j = pi; j < i; ++j) {
+                // x[j] -= L_ji^T * x[i] => x[j] -= L_ij * x[i]
+                x[j] -= (*this)(i,j) * x[i];
+            }
         }
     }
 };

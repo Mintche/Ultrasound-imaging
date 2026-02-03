@@ -19,7 +19,7 @@ struct QuadraturePoint {
 class Fem {
 public:
     // -------------------------------------------------------------------------
-    // 1. Fonctions de base P2 (Shape Functions) sur le triangle de référence
+    // Fonctions de base P2 (Shape Functions) sur le triangle de référence
     // -------------------------------------------------------------------------
 
     // Ordre des noeuds : 0,1,2 (sommets) puis 3,4,5 (milieux)
@@ -39,7 +39,7 @@ public:
     }
 
     // -------------------------------------------------------------------------
-    // 2. Gradients des fonctions de base
+    // Gradients des fonctions de base
     // -------------------------------------------------------------------------
 
     static void evaluate_gradients(double x, double y, FullMatrix<double>& grads) {
@@ -64,7 +64,7 @@ public:
     }
 
     // -------------------------------------------------------------------------
-    // 3. Quadrature de Gauss
+    // Quadrature de Gauss
     // -------------------------------------------------------------------------
 
     static vector<QuadraturePoint> get_quadrature_points() {
@@ -114,10 +114,10 @@ public:
     }
 
     // -------------------------------------------------------------------------
-    // 4. Calcul du profil de la matrice
+    // Calcul du profil de la matrice
     // -------------------------------------------------------------------------
 
-    static vector<size_t> compute_profile(const MeshP2& mesh) {
+    static vector<size_t> compute_profile(const MeshP2& mesh){
         size_t ndof = mesh.ndof();
         vector<size_t> p(ndof);
         
@@ -140,21 +140,50 @@ public:
         return p;
     }
 
+    static vector<size_t> compute_profile_enhanced(const MeshP2& mesh, const vector<int>& boundary_tags){
+        // 1. Profil standard basé sur les triangles
+        vector<size_t> p = compute_profile(mesh);
+
+        // 2. Élargissement du profil pour les frontières (DtN)
+
+        for (int tag : boundary_tags) {
+            vector<int> boundary_nodes;
+            // On parcourt les arêtes pour trouver les noeuds du bord 'tag'
+            for(const auto& tri : mesh.triangles) {
+                for(int i=0; i<3; ++i) {
+                    if(tri.edge_ref[i] == tag) {
+                        // Les 3 noeuds de l'arête (2 sommets + 1 milieu)
+                        boundary_nodes.push_back(tri.node_ids[i]);
+                        boundary_nodes.push_back(tri.node_ids[(i+1)%3]);
+                        boundary_nodes.push_back(tri.node_ids[i+3]);
+                    }
+                }
+            }
+            // Pour chaque paire de noeuds (u, v) sur ce bord, on met à jour le profil
+            // car la matrice T va créer un coefficient non nul entre eux.
+            for (int u : boundary_nodes) {
+                for (int v : boundary_nodes) {
+                    if (u > v) { // On ne stocke que le triangle inférieur
+                        if (v < static_cast<int>(p[u])) {
+                            p[u] = v;
+                        }
+                    }
+                }
+            }
+        }
+        return p;
+    }
+
     // -------------------------------------------------------------------------
-    // 5. Assemblage de la Matrice de Rigidité (Stiffness) A
+    // Assemblage de la Matrice de Rigidité A
     // -------------------------------------------------------------------------
-    // A_ij = Integrale( grad(wi) . grad(wj) )
-    static void assemble_stiffness(const MeshP2& mesh, ProfileMatrix<complexe>& A) {
-        // Récupérer les points de quadrature
+
+    static void A_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& A, double factor = 1.0){
         vector<QuadraturePoint> qp = get_quadrature_points();
-        
-        // Variables locales pour éviter les allocations dans la boucle
+
         FullMatrix<double> dphi_ref(6,2);
         
-        // Boucle sur tous les triangles du maillage
         for (const auto& tri : mesh.triangles) {
-            
-            // Coordonnées des 3 sommets du triangle (p0, p1, p2)
 
             Point2D p0 = mesh.nodes[tri.node_ids[0]];
             Point2D p1 = mesh.nodes[tri.node_ids[1]];
@@ -181,11 +210,9 @@ public:
             
             // Boucle sur les points de quadrature
             for (const auto& q : qp) {
-                // Evaluer les gradients sur le triangle de référence
+
                 evaluate_gradients(q.x, q.y, dphi_ref);
 
-                // 1. Gradients réels : G_real = dphi_ref * invJac
-                // dphi_ref (6x2) * invJac (2x2) -> G_real (6x2)
                 FullMatrix<double> G_real = dphi_ref * invJac;
 
                 // 2. Contribution locale : G_real * G_real^T
@@ -195,32 +222,21 @@ public:
                 // 3. Accumulation pondérée dans K_elem
                 double weight = q.w * abs(detJac);
                 
-                // On ajoute manuellement car pas d'opérateur K_elem += contrib * scalar
                 for(int i=0; i<6; ++i) {
                     for(int j=0; j<6; ++j) {
-                        A_elem(i, j) += contrib(i, j) * weight;
+                        A(tri.node_ids[i], tri.node_ids[j]) += complexe(contrib(i, j) * weight * factor, 0.0);
                     }
-                }
-            }
-            
-            // 4. Assemblage dans la matrice
-            for(int i=0; i<6; ++i) {
-                int I = tri.node_ids[i];
-                for(int j=0; j<6; ++j) {
-                    int J = tri.node_ids[j];
-                    A(I, J) += complexe(A_elem(i, j), 0.0);
                 }
             }
         }
     }
 
     // -------------------------------------------------------------------------
-    // 6. Assemblage de la Matrice de Masse B
+    // Assemblage de la Matrice de Masse B
     // -------------------------------------------------------------------------
 
-    // B_ij = Integrale( k^2 * wi * wj )
-    static void assemble_mass(const MeshP2& mesh, ProfileMatrix<complexe>& B, 
-                              double k0, double k_d_val) {
+    static void B_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& B, 
+                              double k0, double k_d_val, double factor = -1.0){
         auto qp = get_quadrature_points();
         std::vector<double> phi(6);
 
@@ -264,7 +280,7 @@ public:
                         
                         double val = phi[i] * phi[j] * weight * (k * k);
                         
-                        B(tri.node_ids[i],tri.node_ids[j]) += val;
+                        B(tri.node_ids[i],tri.node_ids[j]) += val * factor;
                     }
                 }
             }
@@ -272,9 +288,9 @@ public:
     }
 
     // -------------------------------------------------------------------------
-    // 7. Quadrature 1D (Gauss-Legendre) pour les bords
+    // Quadrature 1D (Gauss-Legendre) pour les bords
     // -------------------------------------------------------------------------
-    static vector<QuadraturePoint> get_quadrature_points_1d() {
+    static vector<QuadraturePoint> get_quadrature_points_1d(){
         vector<QuadraturePoint> qp(3);
         double sqrt35 = sqrt(3/5.); // sqrt(3/5)
         
@@ -282,92 +298,174 @@ public:
         qp[1].x = 0.0;     qp[1].w = 8.0/9.0;
         qp[2].x = sqrt35;  qp[2].w = 5.0/9.0;
         
-        // .y n'est pas utilisé en 1D
         return qp;
     }
 
     // -------------------------------------------------------------------------
-    // 8. Fonctions de forme 1D P2 sur [-1, 1] et calcul de c_n
+    // Fonctions de forme 1D P2 sur [-1, 1] et calcul de c_n
     // -------------------------------------------------------------------------
     // phi[0] : t=-1 (gauche), phi[1] : t=1 (droite), phi[2] : t=0 (milieu)
-    static void evaluate_shape_functions_1d(double t, vector<double>& phi) {
+    static void evaluate_shape_functions_1d(double t, vector<double>& phi){
         phi[0] = 0.5 * t * (t - 1.0); // Sommet gauche
         phi[1] = 0.5 * t * (t + 1.0); // Sommet droite
         phi[2] = 1.0 - t * t;         // Milieu
     }
 
-    static double evaluate_c_1d(double x, double h, int n) {
-        return (2.0 / h)*cos(n*M_PI * x / h);        
+    static double evaluate_c_1d(double y, double h, int n){
+        if (n == 0) return sqrt(1.0 / h);
+        return sqrt(2.0 / h) * cos(n * M_PI * y / h);
     }
 
     // -------------------------------------------------------------------------
-    // 9. Assemblage générique d'une matrice de masse surfacique (Bord)
+    // Calcul de Beta_n
     // -------------------------------------------------------------------------
-    // Calcule Integrale_Gamma ( coeff * u * v ) sur les arêtes ayant le tag 'boundary_tag'
-    static void assemble_E(const MeshP2& mesh, FullMatrix<complex<double>>& E, int N, int boundary_tag) {
-        auto qp = get_quadrature_points_1d();
-        vector<double> phi_1d(3);
-        double h = mesh.Ly; // Hauteur du domaine 
+
+    static complexe compute_beta(double k0, double h, int n){
+        return sqrt(complexe(k0*k0 - (M_PI*n/h)*(M_PI*n/h), 0.0));
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Assemblage matrice E
+    // -------------------------------------------------------------------------
+
+    static FullMatrix<complex<double>> compute_E(const MeshP2& mesh, int N_modes, int boundary_tag, double k0) {
         
+        int ndof = mesh.ndof();
+        // E est une matrice (Ndof x N_modes)
+        FullMatrix<complex<double>> E(ndof, N_modes); 
+
+        auto qp = get_quadrature_points_1d(); // Quadrature de Gauss 1D
+        vector<double> phi_1d(3);
+        double h = mesh.Ly; // Hauteur du guide
+
+        // Boucle sur tous les triangles pour trouver les arêtes du bord
         for (const auto& tri : mesh.triangles) {
             for (int edge_i = 0; edge_i < 3; ++edge_i) {
-                // Si l'arête courante possède le tag recherché
+                
+                // Si l'arête est sur la frontière demandée (ex: tag 1 pour gauche, 2 pour droite)
                 if (tri.edge_ref[edge_i] == boundary_tag) {
-                    // Calcul de F' pour cette arête
+                    
+                    // Indices locaux des noeuds de l'arête (A, B) et milieu (M)
                     int idx_A = edge_i;
                     int idx_B = (edge_i + 1) % 3;
                     int idx_M = edge_i + 3;
 
+                    // Indices globaux dans la matrice
                     int nodes_global[3] = {
                         tri.node_ids[idx_A],
                         tri.node_ids[idx_B], 
                         tri.node_ids[idx_M]
-                    };  
+                    };
+
+                    // Coordonnées physiques pour calculer la longueur (Jacobien)
                     Point2D A = mesh.nodes[nodes_global[0]];
                     Point2D B = mesh.nodes[nodes_global[1]];
-                    double edge_length = sqrt((B.x - A.x)*(B.x - A.x) + (B.y - A.y)*(B.y - A.y));
+                    
+                    // Longueur de l'arête (segment vertical)
+                    double edge_length = sqrt(pow(B.x - A.x, 2) + pow(B.y - A.y, 2));
                     double detJac = edge_length / 2.0;
 
+                    // Boucle sur les points d'intégration
                     for (const auto& q : qp) {
-                        double t = q.x; // Coordonnée sur l'arête de référence [-1,1]
-                        double weight = q.w;
+                        double t = q.x; // Coordonnée ref [-1, 1]
+                        double w = q.w;
+                        
+                        // 1. Fonctions de forme 1D au point t
                         evaluate_shape_functions_1d(t, phi_1d);
 
-                        for (int i = 0; i < 3 ; i++) {
-                            for (int n = 0; n < N; n++) {
-                                double c_n = evaluate_c_1d(0.5 * ( (B.x + A.x) + t * (B.x - A.x) ), h, n);
-                                complex<double> val = phi_1d[i] * phi_1d[n] * c_n * weight * detJac;
-                                E(nodes_global[i], n) += val;           
+                        // 2. Coordonnée physique Y au point d'intégration
+
+                        double y_phys = 0.5 * ((B.y + A.y) + t * (B.y - A.y));
+
+                        // 3. Remplissage de E
+                        for (int i = 0; i < 3; ++i) {
+                            for (int n = 0; n < N_modes; ++n) {
+
+                                double cn_val = evaluate_c_1d(y_phys, h, n);
+
+                                complex<double> val = phi_1d[i] * cn_val * w * detJac;
+                                
+                                E(nodes_global[i], n) += val;
                             }
                         }
-                    } 
+                    }
+                }
+            }
+        }
+        return E;
+    }
+
+    // -------------------------------------------------------------------------
+    // Assemblage matrice D
+    // -------------------------------------------------------------------------
+
+    static void compute_D(FullMatrix<complexe>& D, int boundary_tag, int N, double h, double k0){
+            for (int j =0; j<N; j++) {
+                D(j,j) = complex<double>(0.0,1.0)* compute_beta(k0, h, j);
+            }       
+    }
+
+    // -------------------------------------------------------------------------
+    // Assemblage matrice T
+    // -------------------------------------------------------------------------
+
+    static void T_matrix(ProfileMatrix<complexe>& K, FullMatrix<complexe>& E, FullMatrix<complexe>& D, double h, int boundary_tag, double factor = -1.0){
+
+        int Ndof = E.rows(); // Attention : il faut ajouter une méthode rows() à FullMatrix ou utiliser mesh.ndof()
+        int Nmodes = D.rows();
+
+        for (int i = 0; i < Ndof; ++i) {
+            
+            for (int j = 0; j <= i; ++j) { // Symétrie : j <= i
+                // Calcul de T_ij = Somme_n ( E_in * D_nn * E_jn )
+                complexe val_T_ij = 0.0;
+                bool interact = false;
+                
+                for (int n = 0; n < Nmodes; ++n) {
+                    // D est diagonale, on prend D(n,n)
+                    // T = E D E^T => T_ij = sum_k E_ik D_kk (E^T)_kj = sum_k E_ik D_kk E_jk
+                    complexe term = E(i, n) * D(n, n) * E(j, n);
+                    if (abs(term) > 1e-14) {
+                        val_T_ij += term;
+                        interact = true;
+                    }
+                }
+
+                if (interact) {
+                    K(i, j) += factor * val_T_ij;
                 }
             }
         }
     }
 
-    static void assemble_D(const MeshP2& mesh, FullMatrix<complex<double>>& D, int boundary_tag, int N, int total_dofs, double k0) {
-        int mini = min(total_dofs, N);
-            for (int j =0; j<mini; j++) {
-                D(j,j) = complex<double>(0.0,1.0)* compute_beta(k0, mesh.Ly, j);
-            }       
-    }
+    // -------------------------------------------------------------------------
+    // Assemblage vecteur G
+    // -------------------------------------------------------------------------
 
-    static void assemble_T(FullMatrix<complex<double>>& T, FullMatrix<complex<double>>& D, FullMatrix<complex<double>>& E, int N, int boundary_tag){
-        T = E * D * E.transpose();
-    }
+    static vector<complexe> assemble_source_vector(const MeshP2& mesh, 
+                                               const FullMatrix<complexe>& E_minus, // E sur Sigma_-L
+                                               int n_inc, 
+                                               double k0, double L) {
+    
+        int Ndof = mesh.ndof();
+        vector<complexe> G(Ndof, 0.0);
+
+        // Calcul du coefficient scalaire : -2 * i * beta_n * exp(-i * beta_n * L)
+        // Attention le PDF dit exp(-i * beta * L) mais verifiez le signe selon votre convention de phase
+        // Page 3, eq (79) : g- = -2i beta_n c_n e^{-i beta_n L}
         
+        complexe beta = compute_beta(k0, mesh.Ly, n_inc);
+        complexe coeff = -2.0 * complex<double>(0,1) * beta * exp(-complex<double>(0,1) * beta * L);
 
+        // Remplissage du vecteur
 
+        for (int i = 0; i < Ndof; ++i) {
+            G[i] = coeff * E_minus(i, n_inc); 
+        }
 
-// -------------------------------------------------------------------------
-// 10. Calcul de Beta_n
-// -------------------------------------------------------------------------
-
-    complexe compute_beta(double k0, double h, int n) {
-        return sqrt(complexe(k0*k0 - (M_PI*n/h)*(M_PI*n/h), 0.0));
+        return G;
     }
-
 };
 
 #endif
