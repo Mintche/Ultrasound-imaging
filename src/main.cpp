@@ -1,9 +1,9 @@
 #include "fem.hpp"
 #include <cstdio>
 
-//DEF
+//DEFINE
 
-#define k0 1.0
+#define k0 30.0
 #define kd (k0*1.5)
 #define N 20
 
@@ -18,10 +18,13 @@ int main(int argc,char** argv){
     mesh.read_msh_v2_ascii("data/test_ultrasound.msh",{2});
 
     double h = mesh.Ly;
+    int N_modes = N;
+    int tag_left = 11;
+    int tag_right = 12;
 
     printf("Hauteur du guide (h) : %f | Ndof : %zu\n", h, mesh.ndof());
 
-    vector<size_t> profile = Fem::compute_profile_enhanced(mesh,{11, 12}); // 11 bord gauche 12 bord droite
+    vector<size_t> profile = Fem::compute_profile_enhanced(mesh,{tag_left, tag_right});
 
     ProfileMatrix<complexe> K(profile);
 
@@ -29,34 +32,38 @@ int main(int argc,char** argv){
 
     Fem::B_matrix(mesh,K,k0,kd,-1.0); //on soustrait B
 
-    // --- Conditions aux limites transparentes (DtN) ---
-    // On calcule les termes de bord pour simuler un guide infini
-    int N_modes = N;
-    int tag_left = 11;  // Tag du bord gauche dans le .msh
-    int tag_right = 12; // Tag du bord droit dans le .msh
+    // --- Conditions aux limites ---
 
-    // Matrices de projection E (liens entre noeuds du bord et modes)
+    // Matrices de projection E
+
     FullMatrix<complexe> E_minus = Fem::compute_E(mesh, N_modes, tag_left, k0);
     FullMatrix<complexe> E_plus  = Fem::compute_E(mesh, N_modes, tag_right, k0);
 
     // Matrice diagonale D (contient les coefficients de propagation i*beta_n)
+
     FullMatrix<complexe> D(N_modes, N_modes);
     Fem::compute_D(D, 0, N_modes, h, k0);
 
-    // Ajout des matrices T = E * D * E^T à la matrice globale K
-    // Le facteur est -1.0 car le terme de bord passe à droite ou est soustrait dans la formulation faible
+    // Ajout des matrices T
+
     Fem::T_matrix(K, E_minus, D, h, tag_left, -1.0);
     Fem::T_matrix(K, E_plus, D, h, tag_right, -1.0);
 
     // --- Assemblage du second membre (Source) ---
-    // On envoie le mode fondamental (n=0) depuis la gauche
+    // On envoie le mode n depuis la gauche vers la droite
+
+    int n = 0;
+
     double L = mesh.Lx / 2.0; // Demi-longueur du domaine
-    vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, 0, k0, L);
+
+    vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, n, k0, L);
 
     // --- Résolution du système KU = G ---
     printf("Resolution du systeme (Ndof=%zu)...\n", mesh.ndof());
+
     vector<complexe> U(mesh.ndof());
-    K.solve(U, G); // Factorisation LDL^T + Descente/Remontée
+
+    K.solve(U, G);
 
     // --- Export pour Matlab ---
     printf("Export des resultats...\n");

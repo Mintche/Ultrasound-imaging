@@ -4,6 +4,7 @@
 #include <vector>
 #include <cmath>
 #include <iostream>
+#include <algorithm>
 #include "math.hpp" // Ta classe matrice
 #include "mesh.hpp" // La classe maillage
 
@@ -159,6 +160,10 @@ public:
                     }
                 }
             }
+            // Suppression des doublons pour éviter une boucle N^2 inutile
+            sort(boundary_nodes.begin(), boundary_nodes.end());
+            boundary_nodes.erase(unique(boundary_nodes.begin(), boundary_nodes.end()), boundary_nodes.end());
+
             // Pour chaque paire de noeuds (u, v) sur ce bord, on met à jour le profil
             // car la matrice T va créer un coefficient non nul entre eux.
             for (int u : boundary_nodes) {
@@ -182,10 +187,6 @@ public:
         vector<QuadraturePoint> qp = get_quadrature_points();
 
         FullMatrix<double> dphi_ref(6,2);
-        // Optimisation : Allocation hors de la boucle
-        FullMatrix<double> Jac(2,2);
-        FullMatrix<double> invJac(2,2);
-        
         for (const auto& tri : mesh.triangles) {
 
             Point2D p0 = mesh.nodes[tri.node_ids[0]];
@@ -194,35 +195,31 @@ public:
 
             //Passage (Reference -> Réel) F(S) = Bl*S + bl avec bl = S0, Bl = [S1-S0,S2-S0]
 
-            Jac(0,0) = p1.x-p0.x;
-            Jac(0,1) = p2.x-p0.x;
-
-            Jac(1,0) = p1.y-p0.y;
-            Jac(1,1) = p2.y-p0.y;
-
-            //detJ et l'inverse de J
-
-            double detJac = (p1.x-p0.x)*(p2.y-p0.y)-(p1.y-p0.y)*(p2.x-p0.x);
-
-            invJac = Jac.inverse();
+            double J00 = p1.x-p0.x; double J01 = p2.x-p0.x;
+            double J10 = p1.y-p0.y; double J11 = p2.y-p0.y;
+            double detJac = J00*J11 - J01*J10;
+            double invDet = 1.0 / detJac;
+            
+            double iJ00 =  J11 * invDet;
+            double iJ01 = -J01 * invDet;
+            double iJ10 = -J10 * invDet;
+            double iJ11 =  J00 * invDet;
 
             // Boucle sur les points de quadrature
             for (const auto& q : qp) {
-
                 evaluate_gradients(q.x, q.y, dphi_ref);
+                double weight = q.w * abs(detJac) * factor;
 
-                FullMatrix<double> G_real = dphi_ref * invJac;
-
-                // 2. Contribution locale : G_real * G_real^T
-                // Cela calcule tous les produits scalaires grad_i . grad_j d'un coup
-                FullMatrix<double> contrib = G_real * G_real.transpose();
-
-                // 3. Accumulation pondérée dans K_elem
-                double weight = q.w * abs(detJac);
+                double G[6][2];
+                for(int i=0; i<6; ++i) {
+                    G[i][0] = dphi_ref(i,0)*iJ00 + dphi_ref(i,1)*iJ10;
+                    G[i][1] = dphi_ref(i,0)*iJ01 + dphi_ref(i,1)*iJ11;
+                }
                 
                 for(int i=0; i<6; ++i) {
                     for(int j=0; j<=i; ++j) {
-                        A(tri.node_ids[i], tri.node_ids[j]) += complexe(contrib(i, j) * weight * factor, 0.0);
+                        double dot = G[i][0]*G[j][0] + G[i][1]*G[j][1];
+                        A(tri.node_ids[i], tri.node_ids[j]) += complexe(dot * weight, 0.0);
                     }
                 }
             }
@@ -411,23 +408,25 @@ public:
             }
         }
 
+        // Pré-calcul de E*D pour éviter une multiplication dans la boucle triple
+        FullMatrix<complexe> ED(Ndof, Nmodes);
+        for(int i : active_dofs) {
+            for(int n=0; n<Nmodes; ++n) {
+                ED(i, n) = E(i, n) * D(n, n);
+            }
+        }
+
         for (int i : active_dofs) {
             
             for (int j : active_dofs) { 
                 if (j > i) continue; // Symétrie : j <= i
                 complexe val_T_ij = 0.0;
-                bool interact = false;
                 
                 for (int n = 0; n < Nmodes; ++n) {
-
-                    complexe term = E(i, n) * D(n, n) * E(j, n);
-                    if (abs(term) > 1e-14) {
-                        val_T_ij += term;
-                        interact = true;
-                    }
+                    val_T_ij += ED(i, n) * E(j, n);
                 }
 
-                if (interact) {
+                if (abs(val_T_ij) > 1e-14) {
                     K(i, j) += factor * val_T_ij;
                 }
             }

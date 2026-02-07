@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility>
 #include <cmath>
+#include <algorithm>
 #include <complex>
 using namespace std;
 typedef complex<double> complexe;
@@ -368,29 +369,23 @@ public:
             for (int j = pi; j < i; ++j) {
                 T sum = T(0);
                 int pj = static_cast<int>(p[j]);
-                int start_k = std::max(pi, pj);
+                int start_k = max(pi, pj);
 
-                // Optimisation possible ici avec des pointeurs bruts pour la vitesse
+                const T* row_i = &coefs[offsets[i] - pi];
+                const T* row_j = &coefs[offsets[j] - pj];
+
                 for (int k = start_k; k < j; ++k) {
-                    // L_ik * L_jk * D_kk
-                    // Attention: coefs contient L (triangle inf) et D (diag) mélangés
-                    // L_ik est à (i,k), L_jk à (j,k), D_kk à (k,k)
-                    sum += (*this)(i,k) * (*this)(j,k) * (*this)(k,k);
+                    sum += row_i[k] * row_j[k] * coefs[offsets[k] + k - static_cast<int>(p[k])];
                 }
                 
-                // Calcul de L_ij
-                // A_ij - sum
-                T val = (*this)(i,j) - sum;
-                // L_ij = val / D_jj
-                (*this)(i,j) = val / (*this)(j,j);
+                T& A_ij = coefs[offsets[i] + j - pi];
+                A_ij = (A_ij - sum) / coefs[offsets[j] + j - pj];
                 
-                // Accumulation pour le calcul de D_ii
-                d_val += (*this)(i,j) * (*this)(i,j) * (*this)(j,j);
+                d_val += A_ij * A_ij * coefs[offsets[j] + j - pj];
             }
-            // D_ii = A_ii - somme(L_ik^2 * D_kk)
-            (*this)(i,i) -= d_val;
+            coefs[offsets[i] + i - pi] -= d_val;
             
-            if (abs((*this)(i,i)) < 1e-14) throw runtime_error("Pivot nul dans LDLT");
+            if (abs(coefs[offsets[i] + i - pi]) < 1e-14) throw runtime_error("Pivot nul dans LDLT");
         }
         is_factorized = true;
     }
