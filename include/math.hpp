@@ -83,9 +83,9 @@ class FullMatrix {
 
 protected:
 
-    vector<T> coefs;
     int n_rows;
     int n_cols;
+    vector<T> coefs;
     
 public:
 
@@ -285,11 +285,11 @@ template <typename T>
 class ProfileMatrix {
 private:
 
-    vector<T> coefs;
+    int n;
     vector<size_t> p;
+    vector<T> coefs;
     vector<size_t> q;
     vector<size_t> offsets;
-    int n;
     bool is_factorized;
 
 public:
@@ -298,7 +298,7 @@ public:
         q.resize(n);
         offsets.resize(n);
         size_t total_size = 0;
-        for (size_t i = 0; i < n; i++) {
+        for (size_t i = 0; i < static_cast<size_t>(n); i++) {
             offsets[i] = total_size;
             q[i] = i - p[i] + 1;
             total_size += q[i];
@@ -331,7 +331,7 @@ public:
         vector<T> res(n, T(0));
         size_t index_offset = 0;
 
-        for (size_t i = 0; i < n; i++) {
+        for (size_t i = 0; i < static_cast<size_t>(n); i++) {
             for (size_t j = p[i]; j < i; j++) {
                 const T& val = coefs[index_offset + j - p[i]];
                 res[i] += val * x[j];

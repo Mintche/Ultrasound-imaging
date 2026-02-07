@@ -1,4 +1,4 @@
-run("mesh_out.m");   % charge Coor, Tri, RefTri, EdgeRef, IsDef
+run("../solution_out.m");   % charge Coor, Tri, RefTri, EdgeRef, IsDef
 
 figure; hold on;
 

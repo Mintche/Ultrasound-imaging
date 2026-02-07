@@ -1,1 +1,9 @@
 test/*.x
+
+test/*.geo
+
+test/*.msh
+
+*.x
+
+*.m
