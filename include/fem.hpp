@@ -395,7 +395,7 @@ public:
 
     static void T_matrix(ProfileMatrix<complexe>& K, FullMatrix<complexe>& E, FullMatrix<complexe>& D, double h, int boundary_tag, double factor = -1.0){
 
-        int Ndof = E.rows(); // Attention : il faut ajouter une méthode rows() à FullMatrix ou utiliser mesh.ndof()
+        int Ndof = E.rows();
         int Nmodes = D.rows();
 
         // Optimisation : Identifier les DOFs actifs (ceux sur le bord)
