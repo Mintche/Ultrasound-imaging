@@ -18,7 +18,7 @@ public:
     // -------------------------------------------------------------------------
     // Calcul de la composante du champs diffracté sur un bord 
     // -------------------------------------------------------------------------
-    static void compute_u_s(const MeshP2& mesh, int n_mode, int boundary_tag, double direction, double L,double k0, double h,vector<complexe>& u_s, vector<complexe>& u_n) {
+    static void compute_u_s(const MeshP2& mesh, int n_mode, int boundary_tag, double direction, double L, double k0, double h,vector<complexe>& u_s, vector<complexe>& u_n) {
 
         vector<int> visited(mesh.ndof(), 0);
         for (const auto& tri : mesh.triangles) {
@@ -40,7 +40,7 @@ public:
                             visited[idx] = 1;
                             double x = mesh.nodes[idx].x;
                             double y = mesh.nodes[idx].y;
-                            complexe exposant = exp(direction * complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*L); // exp(i*direction*dot((x,y), direction_vector))
+                            complexe exposant = direction * complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*L; // exp(i*direction*dot((x,y), direction_vector))
                             complexe phi_n = Fem::evaluate_c_1d(y, h, n_mode)*exp(exposant); // Calcul de phi_n à ce point
                             u_s[idx] = u_n[idx] - phi_n; // Contribution au champ diffracté sur le bord
                         }        
@@ -49,18 +49,38 @@ public:
             }
         }
     }
+
     // -------------------------------------------------------------------------
     // Projection du champ diffracté n sur le mode m
     // -------------------------------------------------------------------------
     
     // -------------------------------------------------------------------------
-    // Calcul de F
+    // Calcul de F (pas fini)
     // -------------------------------------------------------------------------
-
+    static void compute_F(FullMatrix<complexe>& F_pp, int boundary_tag, int N_mode, double k0, double h, double L) {
+        for (int m = 0; m < 2*N_mode; ++m) {
+            for (int n = 0; n < 2*N_mode; ++n) {
+                complexe exposant = complexe(0.,1.) * Fem::compute_beta(k0, h, n) * L; // exp(i*beta_n*L)
+                complexe constante = exp(exposant) / (complexe(0.,1.) * Fem::compute_beta(k0, h, n)); // exp(i*beta_n*L) / (i*beta_n)
+                F_pp(m, n) = constante * U(m, n); // Projection du champ diffracté sur le mode m
+            }
+        }
+    }
     // -------------------------------------------------------------------------
     // Calcul de F++ (back scattering)
     // -------------------------------------------------------------------------
+    static void compute_F_pp(const FullMatrix<complexe>& U, FullMatrix<complexe>& F_pp, int boundary_tag, int N_mode, double k0, double h, double L) {
+        for (int m = 0; m < N_mode; ++m) {
+            for (int n = 0; n < N_mode; ++n) {
+                complexe exposant = complexe(0.,1.) * Fem::compute_beta(k0, h, n) * L; // exp(i*beta_n*L)
+                complexe constante = exp(exposant) / (complexe(0.,1.) * Fem::compute_beta(k0, h, n)); // exp(i*beta_n*L) / (i*beta_n)
+                F_pp(m, n) = constante * U(m, n); // Projection du champ diffracté sur le mode m
+            }
+        }
 
+
+
+    }
     // -------------------------------------------------------------------------
     // Calcul de G 
     // -------------------------------------------------------------------------
@@ -68,5 +88,6 @@ public:
     // -------------------------------------------------------------------------
     // Generation d'image matlab de log(1/||h||)
     // -------------------------------------------------------------------------
-}
+};
+
 #endif // LINEAR_SAMPLING_HPP
