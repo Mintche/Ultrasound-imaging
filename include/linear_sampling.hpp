@@ -65,8 +65,17 @@ public:
     // Calcul de G 
     // -------------------------------------------------------------------------
 
+    static FullMatrix<complexe> assemble_F_G(const MeshP2& mesh, int n_mode, double z1, double z2, double L,double k0, double h){
+        FullMatrix<complexe> F_G(n_mode,2);
+        for (int m = 0; m < n_mode;m++){
+            F_G(m,1) = exp(complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*(L+z1))*Fem::evaluate_c_1d(z2,h,m)/(complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*(L+z1));
+            F_G(m,2) = exp(complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*(L-z1))*Fem::evaluate_c_1d(z2,h,m)/(complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*(L+z1));
+        }
+        return F_G;
+    }
+
     // -------------------------------------------------------------------------
     // Generation d'image matlab de log(1/||h||)
     // -------------------------------------------------------------------------
-}
+};
 #endif // LINEAR_SAMPLING_HPP
