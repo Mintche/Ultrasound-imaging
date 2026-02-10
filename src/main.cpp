@@ -6,7 +6,7 @@
 
 // DEFINE PARAMETERS
 #define k0 30.0
-#define kd (k0 * 1.5)
+#define kd (k0 * 3)
 #define N_MODES 20
 #define EPSILON 1e-4 // Paramètre de régularisation Tikhonov
 
@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
     Fem::T_matrix(K, E_plus, D, h, tag_right, -1.0);
 
     // FACTORISATION DU SYSTEME FEM (On le fait une seule fois !)
-    printf("Factorisation LU de la matrice FEM...\n");
+    printf("Factorisation LDL^T de la matrice FEM...\n");
     K.factorize(); 
 
     // -------------------------------------------------------------------------
@@ -119,8 +119,8 @@ int main(int argc, char** argv) {
     // Construction de la matrice normale régularisée : M = F* F + epsilon * I
     // On suppose que ta classe FullMatrix gère l'adjoint et le produit
     FullMatrix<complexe> F_adj = F.adjoint();
-    FullMatrix<complexe> I(N_MODES,N_MODES);
-    for (int i = 0; i < N_MODES;i++) I(i,i) = 1.0;
+    FullMatrix<complexe> I(2*N_MODES,2*N_MODES);
+    for (int i = 0; i < 2*N_MODES;i++) I(i,i) = 1.0;
     FullMatrix<complexe> M = F_adj * F + complex(EPSILON,0.0)*I;
 
     M.factorize();
