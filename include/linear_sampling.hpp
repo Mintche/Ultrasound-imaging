@@ -53,7 +53,12 @@ public:
     // -------------------------------------------------------------------------
     // Projection du champ diffracté n sur le mode m
     // -------------------------------------------------------------------------
-    
+    static void compute_projection( const vector<complexe>& u_s, FullMatrix<complexe>& E_plus, FullMatrix<complexe>& E_minus, vector<complexe>& U_proj_plus, vector<complexe>& U_proj_minus) {
+        
+        FullMatrix<complexe> U_proj_plus = E_plus.transpose() * u_s; // Projection sur les modes de droite
+        FullMatrix<complexe> U_proj_minus = E_minus.transpose() * u_s; // Projection sur les modes de gauche
+
+    }
     // -------------------------------------------------------------------------
     // Calcul de F (pas fini)
     // -------------------------------------------------------------------------
@@ -84,6 +89,15 @@ public:
     // -------------------------------------------------------------------------
     // Calcul de G 
     // -------------------------------------------------------------------------
+
+    static FullMatrix<complexe> assemble_F_G(const MeshP2& mesh, int n_mode, double z1, double z2, double L,double k0, double h){
+        FullMatrix<complexe> F_G(n_mode,2);
+        for (int m = 0; m < n_mode;m++){
+            F_G(m,1) = exp(complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*(L+z1))*Fem::evaluate_c_1d(z2,h,m)/(complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*(L+z1));
+            F_G(m,2) = exp(complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*(L-z1))*Fem::evaluate_c_1d(z2,h,m)/(complexe(0.,1.) *Fem::compute_beta(k0, h, n_mode)*(L+z1));
+        }
+        return F_G;
+    }
 
     // -------------------------------------------------------------------------
     // Generation d'image matlab de log(1/||h||)
