@@ -15,7 +15,7 @@ int main(int argc,char** argv){
 
     MeshP2 mesh;
 
-    mesh.read_msh_v2_ascii("data/test_ultrasound.msh",{2});
+    mesh.read_msh_v2_ascii(argv[1],{2});
 
     double h = mesh.Ly;
     int N_modes = N;
