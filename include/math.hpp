@@ -87,6 +87,7 @@ protected:
     int n_rows;
     int n_cols;
     vector<T> coefs;
+    bool is_ldlt_factorized = false;
     
 public:
 
@@ -151,6 +152,12 @@ public:
         }
     }
 
+    void operator*=(const T s){
+        for (size_t i = 0; i < coefs.size(); i++){
+            coefs[i]*=s;
+        }
+    }
+
     // Remplissage avec une valeur
     void fill(T val) {
         for (size_t i = 0; i < coefs.size(); i++){
@@ -160,7 +167,79 @@ public:
 
     // Résolution via pivot de Gauss
 
+    // Factorisation LDL* (pour matrices hermitiennes) en place.
+    // La partie triangulaire inférieure stocke L (sans la diagonale unité)
+    // et la diagonale stocke D.
+
+    void factorize() {
+        if (is_ldlt_factorized) return;
+        if (n_rows != n_cols) {
+            throw logic_error("Erreur: La factorisation LDLT ne s'applique qu'aux matrices carrées.");
+        }
+        
+        int n = n_rows;
+
+        for (int j = 0; j < n; ++j) {
+            // Calcul de D_jj
+            T d_val = (*this)(j, j);
+            for (int k = 0; k < j; ++k) {
+                // d_val -= L_jk * conj(L_jk) * D_kk
+                d_val -= (*this)(j, k) * conj((*this)(j, k)) * (*this)(k, k);
+            }
+            
+            if (std::abs(d_val) < 1e-14) {
+                 throw runtime_error("Erreur: Matrice singulière ou pivot nul dans la factorisation LDL*.");
+            }
+            (*this)(j, j) = d_val;
+
+            // Calcul de la colonne j de L
+            T inv_d_val = T(1.0) / d_val;
+            for (int i = j + 1; i < n; ++i) {
+                T l_val = (*this)(i, j);
+                for (int k = 0; k < j; ++k) {
+                    l_val -= (*this)(i, k) * conj((*this)(j, k)) * (*this)(k, k);
+                }
+                (*this)(i, j) = l_val * inv_d_val;
+            }
+        }
+        is_ldlt_factorized = true;
+    }
+
     void solve(vector<T>& x, const vector<T>& b){
+        if (is_ldlt_factorized) {
+            // Résolution avec la factorisation LDL* (A x = b -> L D L* x = b)
+            if (b.size() != static_cast<size_t>(n_rows)) {
+                throw invalid_argument("Erreur: La taille du vecteur b doit correspondre au nombre de lignes de la matrice.");
+            }
+
+            int n = n_rows;
+            x = b;
+
+            // 1. Descente : L z = b  (z est stocké dans x)
+            for (int i = 0; i < n; ++i) {
+                T sum = T(0);
+                for (int j = 0; j < i; ++j) {
+                    sum += (*this)(i, j) * x[j];
+                }
+                x[i] -= sum;
+            }
+
+            // 2. Diagonale : D y = z (y est stocké dans x)
+            for (int i = 0; i < n; ++i) {
+                x[i] /= (*this)(i, i);
+            }
+
+            // 3. Remontée : L* x = y (x final est stocké dans x)
+            for (int i = n - 1; i >= 0; --i) {
+                T sum = T(0);
+                for (int j = i + 1; j < n; ++j) {
+                    sum += conj((*this)(j, i)) * x[j]; // L*_ij = conj(L_ji)
+                }
+                x[i] -= sum;
+            }
+            return;
+        }
+
         // La résolution par pivot de Gauss ne s'applique qu'aux matrices carrées
         if (n_rows != n_cols){
             throw logic_error("Erreur: solve() ne peut être appelée que pour des matrices carrées.");
@@ -232,13 +311,17 @@ public:
         return res;
     }
 
+    FullMatrix<T> adjoint() const;
+
+
     // Inverse (calculée colonne par colonne via solve)
     FullMatrix<T> inverse() const {
         if (n_rows != n_cols) throw logic_error("Erreur: Inversion d'une matrice non carrée.");
         FullMatrix<T> res(n_rows, n_cols);
-        FullMatrix<T> tmp = *this; // Copie locale car solve modifie l'objet (pivot)
+        FullMatrix<T> tmp = *this; 
+        if (n_rows == n_cols) tmp.factorize(); // Accélère drastiquement l'inversion
+        
         vector<T> b(n_rows, T(0)), x(n_rows);
-
         for(int j = 0; j < n_cols; ++j) {
             b[j] = T(1); // Colonne j de la matrice identité
             tmp.solve(x, b); // Résout A * x = e_j
@@ -272,10 +355,33 @@ FullMatrix<T> operator+(const FullMatrix<T>& A, const FullMatrix<T>& B){
 }
 
 template<typename T>
+FullMatrix<T> operator*(const FullMatrix<T>& A, const T s){
+    FullMatrix<T> R = A;
+    R *= s;
+    return R;
+}
+
+template<typename T>
+FullMatrix<T> operator*(const T s, const FullMatrix<T>& A){
+    return A*s;
+}
+
+template<typename T>
 FullMatrix<T> operator-(const FullMatrix<T>& A, const FullMatrix<T>& B){
     FullMatrix<T> R = A;
     R -= B;
     return R;
+}
+
+template<>
+FullMatrix<complexe> FullMatrix<complexe>::adjoint() const {
+        FullMatrix<complexe> res(n_cols, n_rows);
+        for(int i = 0; i < n_rows; ++i) {
+            for(int j = 0; j < n_cols; ++j) {
+                res(j, i) = conj((*this)(i, j));
+            }
+        }
+        return res;
 }
 
 //---------------------------------------------------------------------------
@@ -358,7 +464,7 @@ public:
         }
     }
 
-        // Factorisation LDL^T en place
+    // Factorisation LDL^T en place
     void factorize() {
         if(is_factorized) return; 
 

@@ -438,20 +438,20 @@ public:
     // -------------------------------------------------------------------------
 
     static vector<complexe> assemble_source_vector(const MeshP2& mesh, 
-                                               const FullMatrix<complexe>& E_minus,
+                                               const FullMatrix<complexe>& E,
                                                int n_inc, 
-                                               double k0, double L) {
+                                               double k0, double L, double coef) {
     
         int Ndof = mesh.ndof();
         vector<complexe> G(Ndof, 0.0);
         
         complexe beta = compute_beta(k0, mesh.Ly, n_inc);
-        complexe coeff = -2.0 * complex<double>(0,1) * beta * exp(-complex<double>(0,1) * beta * L);
+        complexe coeff = -2.0 * complex<double>(0,1) * beta * exp(coef*complex<double>(0,1) * beta * L);
 
         // Remplissage du vecteur
 
         for (int i = 0; i < Ndof; ++i) {
-            G[i] = coeff * E_minus(i, n_inc); 
+            G[i] = coeff * E(i, n_inc); 
         }
 
         return G;

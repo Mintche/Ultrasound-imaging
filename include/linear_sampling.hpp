@@ -19,36 +19,13 @@ public:
     // Calcul de la composante du champs diffracté sur un bord 
     // -------------------------------------------------------------------------
 
-    static void compute_u_s(const MeshP2& mesh, int n_modes, int boundary_tag, double direction, double L, double k0, double h, vector<complexe>& u_s, const vector<complexe>& u_n) {
+    static void compute_boundary_u_s(const MeshP2& mesh, int n_mode,int tag_left,int tag_right, double direction, double L, double k0, double h, vector<complexe>& u_s, const vector<complexe>& u_n) {
 
-        vector<int> visited(mesh.ndof(), 0);
-        for (const auto& tri : mesh.triangles) {
-            for (int edge_i = 0; edge_i < 3; ++edge_i) {
-                if (tri.edge_ref[edge_i] == boundary_tag){
-                    int idx_A = edge_i;
-                    int idx_B = (edge_i + 1) % 3;
-                    int idx_M = edge_i + 3;
-
-                    // Indices globaux dans la matrice
-                    int nodes_global[3] = {
-                        tri.node_ids[idx_A],
-                        tri.node_ids[idx_B], 
-                        tri.node_ids[idx_M]
-                    };
-
-                    for (const auto& idx : nodes_global) {
-                        if (!visited[idx]) {
-                            visited[idx] = 1;
-                            double x = mesh.nodes[idx].x;
-                            double y = mesh.nodes[idx].y;
-
-                            complexe exposant = direction * complexe(0.,1.) * Fem::compute_beta(k0, h, n_modes) * x; //on prend x pour le bord même si x = L
-                            complexe phi_n = Fem::evaluate_c_1d(y, h, n_modes) * exp(exposant); 
-                            
-                            u_s[idx] = u_n[idx] - phi_n; // Contribution au champ diffracté sur le bord
-                        }        
-                    }        
-                }   
+        for (const auto& nodes : mesh.nodes) {
+            if (nodes.ref == tag_left || nodes.ref == tag_right){
+                double c_n_val = Fem::evaluate_c_1d(nodes.y,h,n_mode);
+                complexe b_n = Fem::compute_beta(k0,h,n_mode);
+                u_s[nodes.id] = u_n[nodes.id] - c_n_val * exp(direction * complexe(0., 1.) * b_n * nodes.x);
             }
         }
     }
@@ -58,7 +35,7 @@ public:
     // -------------------------------------------------------------------------
 
     static void compute_projection(const vector<complexe>& u_s, const FullMatrix<complexe>& E_plus, const FullMatrix<complexe>& E_minus, vector<complexe>& U_proj_plus, vector<complexe>& U_proj_minus) {
-        
+
         U_proj_plus = E_plus.transpose() * u_s; // Projection sur les modes de droite
         U_proj_minus = E_minus.transpose() * u_s; // Projection sur les modes de gauche
 
@@ -78,10 +55,10 @@ public:
             complexe constante = exp(exposant) / (complexe(0.,1.) * Fem::compute_beta(k0, h, n)); // exp(i*beta_n*L) / (i*beta_n)
 
             for (int m = 0; m < N_modes; ++m) {
-                F(m, n) = constante * S_m_p(n,m);                               // F++ U-+ 
-                F(m, n + N_modes) = constante * S_p_p(n,m);                     // F+- U++
-                F(m + N_modes, n) = constante * S_m_m(n,m);                     // F-+ U--
-                F(m + N_modes, n + N_modes) = constante * S_p_m(n,m);           // F-- U+-
+                F(m, n) = constante * S_m_p(n,m); // F++ U-+ 
+                F(m, n + N_modes) = constante * S_p_p(n,m); // F+- U++
+                F(m + N_modes, n) = constante * S_m_m(n,m); // F-+ U--
+                F(m + N_modes, n + N_modes) = constante * S_p_m(n,m); // F-- U+-
             }
         }
         return F;
@@ -111,24 +88,26 @@ public:
     // Calcul de G 
     // -------------------------------------------------------------------------
 
-    static FullMatrix<complexe> assemble_F_G(const MeshP2& mesh, int n_modes, double z1, double z2, double L,double k0, double h){
+    static vector<complexe> assemble_Gz(const MeshP2& mesh, int n_modes, double z1, double z2, double L,double k0, double h){
         
-        FullMatrix<complexe> F_G(n_modes,2);
+        vector<complexe> Gz(2*n_modes);
         
         for (int m = 0; m < n_modes;m++){
             
             complexe denominateur = complexe(0.,1.) * Fem::compute_beta(k0, h, m);
             
-            F_G(m,0) = exp(complexe(0.,1.) * Fem::compute_beta(k0, h, m) * (L+z1)) * Fem::evaluate_c_1d(z2,h,m) / denominateur;
-            F_G(m,1) = exp(complexe(0.,1.) * Fem::compute_beta(k0, h, m) * (L-z1)) * Fem::evaluate_c_1d(z2,h,m) / denominateur;
+            Gz[m] = exp(complexe(0.,1.) * Fem::compute_beta(k0, h, m) * (L+z1)) * Fem::evaluate_c_1d(z2,h,m) / denominateur;
+            Gz[m + n_modes] = exp(complexe(0.,1.) * Fem::compute_beta(k0, h, m) * (L-z1)) * Fem::evaluate_c_1d(z2,h,m) / denominateur;
         }
-        return F_G;
+        return Gz;
     }
 
     // -------------------------------------------------------------------------
     // Generation d'image matlab de log(1/||h||)
     // -------------------------------------------------------------------------
     
+
+
 };
 
 #endif // LINEAR_SAMPLING_HPP
