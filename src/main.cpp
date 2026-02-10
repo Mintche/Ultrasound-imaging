@@ -32,8 +32,6 @@ int main(int argc,char** argv){
 
     Fem::B_matrix(mesh,K,k0,kd,-1.0); //on soustrait B
 
-    // --- Conditions aux limites ---
-
     // Matrices de projection E
 
     FullMatrix<complexe> E_minus = Fem::compute_E(mesh, N_modes, tag_left, k0);

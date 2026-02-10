@@ -6,4 +6,6 @@ test/*.msh
 
 *.x
 
-*.m
+mesh_out.m
+
+solution_out.m
