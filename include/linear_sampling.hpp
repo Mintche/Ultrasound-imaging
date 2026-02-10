@@ -52,7 +52,12 @@ public:
     // -------------------------------------------------------------------------
     // Projection du champ diffracté n sur le mode m
     // -------------------------------------------------------------------------
-    
+    static void compute_projection( const vector<complexe>& u_s, FullMatrix<complexe>& E_plus, FullMatrix<complexe>& E_minus, vector<complexe>& U_proj_plus, vector<complexe>& U_proj_minus) {
+        
+        FullMatrix<complexe> U_proj_plus = E_plus.transpose() * u_s; // Projection sur les modes de droite
+        FullMatrix<complexe> U_proj_minus = E_minus.transpose() * u_s; // Projection sur les modes de gauche
+
+    }
     // -------------------------------------------------------------------------
     // Calcul de F
     // -------------------------------------------------------------------------
