@@ -1,25 +1,26 @@
-// test_ultrasound.geo
-// Domaine rectangulaire + inclusion circulaire (defaut)
+// test_ultrasound_sym.geo
+// Domaine rectangulaire SYMETRIQUE [-Lx/2, Lx/2] + inclusion circulaire
 // Physical tags:
 //  - Surface MILIEU : 1
 //  - Surface DEFAUT : 2
-//  - SIGMA_PLUS_L (gauche) : 11
-//  - SIGMA_MINUS_L (droite): 12
-//  - BORD_HAUT : 13
-//  - BORD_BAS  : 14
+//  - SIGMA_GAUCHE (x=-Lx/2) : 11
+//  - SIGMA_DROITE (x=+Lx/2) : 12
+//  - BORD_HAUT    (y=Ly)    : 13
+//  - BORD_BAS     (y=0)     : 14
 
 Mesh.MshFileVersion = 2.2;
-
 SetFactory("OpenCASCADE");
 
 // ----------------------
 // Paramètres géométriques
 // ----------------------
-Lx = 1.0;    // largeur du rectangle
-Ly = 0.6;    // hauteur du rectangle
+Lx = 2.0;    // largeur du rectangle (de -1 à +1)
+Ly = 0.6;    // hauteur du rectangle (de 0 à 0.6)
 
-cx = 0.5;    // centre du défaut
-cy = 0.3;
+// Position du défaut dans le nouveau repère centré
+// Ancien cx = 0.5 (sur 0..2). Nouveau cx = 0.5 - 1.0 = -0.5
+cx = 0;   
+cy = Ly/2;
 r  = 0.08;   // rayon du défaut
 
 // ----------------------
@@ -34,29 +35,33 @@ Mesh.CharacteristicLengthMax = h_bulk;
 // ----------------------
 // Géométrie
 // ----------------------
-Rectangle(1) = {0, 0, 0, Lx, Ly};          // Surface 1 (provisoire)
-Disk(2)      = {cx, cy, 0, r, r};          // Surface 2 (provisoire)
+// MODIFICATION ICI : Le rectangle est centré en X
+// Rectangle(1) = {X_start, Y_start, Z_start, Width, Height}
+Rectangle(1) = {-Lx/2, 0, 0, Lx, Ly};          
 
-// On découpe le rectangle par le disque:
-// - le rectangle devient l'extérieur (milieu) avec un trou
-// - le disque est la surface du défaut
+Disk(2)      = {cx, cy, 0, r, r};          
+
+// On découpe le rectangle par le disque
 out[] = BooleanFragments{ Surface{1}; Delete; }{ Surface{2}; Delete; };
 
-// Après BooleanFragments, les IDs changent.
-// On récupère les surfaces résultantes par localisation (simple et robuste).
-//  - surface défaut : celle qui contient le point (cx,cy)
-//  - surface milieu : l'autre
-sDef[] = Surface In BoundingBox {cx-r-1e-6, cy-r-1e-6, -1, cx+r+1e-6, cy+r+1e-6, 1};
-sAll[] = Surface In BoundingBox {0-1e-6, 0-1e-6, -1, Lx+1e-6, Ly+1e-6, 1};
+// ----------------------
+// Récupération des IDs (Mise à jour des coordonnées de recherche)
+// ----------------------
+eps = 1e-6;
+
+// Surface du défaut : autour de (cx, cy)
+sDef[] = Surface In BoundingBox {cx-r-eps, cy-r-eps, -1, cx+r+eps, cy+r+eps, 1};
+
+// Surface totale : couvre tout de -Lx/2 à +Lx/2
+sAll[] = Surface In BoundingBox {-Lx/2-eps, -eps, -1, Lx/2+eps, Ly+eps, 1};
 
 sMil[] = sAll[];
-// Retire sDef de sMil (si jamais il y a plusieurs surfaces dans sDef, on gère quand même)
 For i In {0:#sDef[]-1}
   sMil[] -= {sDef[i]};
 EndFor
 
 // ----------------------
-// Champs de taille (raffinement près du défaut)
+// Champs de taille (Distance au défaut)
 // ----------------------
 Field[1] = Distance;
 Field[1].SurfacesList = {sDef[]};
@@ -80,24 +85,22 @@ Physical Surface(2) = {sDef[]}; // DEFAUT
 // ----------------------
 // Physical groups (bords)
 // ----------------------
-// On récupère les courbes du contour du rectangle via BoundingBox.
-// Gmsh ne garantit pas l'ordre des courbes, donc on les classe par position.
 
-eps = 1e-6;
+// GAUCHE : x = -Lx/2
+cLeft[]  = Curve In BoundingBox {-Lx/2-eps, -eps, -1, -Lx/2+eps, Ly+eps, 1};
 
-// Courbes sur x=0 (gauche)
-cLeft[]  = Curve In BoundingBox {-eps, -eps, -1, eps, Ly+eps, 1};
-// Courbes sur x=Lx (droite)
-cRight[] = Curve In BoundingBox {Lx-eps, -eps, -1, Lx+eps, Ly+eps, 1};
-// Courbes sur y=Ly (haut)
-cTop[]   = Curve In BoundingBox {-eps, Ly-eps, -1, Lx+eps, Ly+eps, 1};
-// Courbes sur y=0 (bas)
-cBot[]   = Curve In BoundingBox {-eps, -eps, -1, Lx+eps, eps, 1};
+// DROITE : x = +Lx/2
+cRight[] = Curve In BoundingBox {Lx/2-eps, -eps, -1, Lx/2+eps, Ly+eps, 1};
 
-Physical Curve(11) = {cLeft[]};   // SIGMA_PLUS_L
-Physical Curve(12) = {cRight[]};  // SIGMA_MINUS_L
+// HAUT : y = Ly (couvre tout X de -Lx/2 à Lx/2)
+cTop[]   = Curve In BoundingBox {-Lx/2-eps, Ly-eps, -1, Lx/2+eps, Ly+eps, 1};
+
+// BAS : y = 0 (couvre tout X de -Lx/2 à Lx/2)
+cBot[]   = Curve In BoundingBox {-Lx/2-eps, -eps, -1, Lx/2+eps, eps, 1};
+
+Physical Curve(11) = {cLeft[]};   // SIGMA_GAUCHE
+Physical Curve(12) = {cRight[]};  // SIGMA_DROITE
 Physical Curve(13) = {cTop[]};    // BORD_HAUT
 Physical Curve(14) = {cBot[]};    // BORD_BAS
 
-// Optionnel : forcer triangles
 Mesh.RecombineAll = 0;

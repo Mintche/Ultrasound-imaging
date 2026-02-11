@@ -45,20 +45,37 @@ public:
     // Calcul de F
     // -------------------------------------------------------------------------
 
-    static FullMatrix<complexe> compute_F(const FullMatrix<complexe>& S_p_m, const FullMatrix<complexe>& S_m_p, const FullMatrix<complexe>& S_p_p, const FullMatrix<complexe>& S_m_m, int N_modes, double k0, double h, double L) {
+    static FullMatrix<complexe> compute_F(const FullMatrix<complexe>& S_LL, 
+                                          const FullMatrix<complexe>& S_RL, 
+                                          const FullMatrix<complexe>& S_LR, 
+                                          const FullMatrix<complexe>& S_RR, 
+                                          int N_modes, double k0, double h, double L) {
 
-        FullMatrix<complexe> F(2*N_modes,2*N_modes);
+        FullMatrix<complexe> F(2*N_modes, 2*N_modes);
 
         for (int n = 0; n < N_modes; ++n) {
-
-            complexe exposant = complexe(0.,1.) * Fem::compute_beta(k0, h, n) * L; // exp(i*beta_n*L)
-            complexe constante = exp(exposant) / (complexe(0.,1.) * Fem::compute_beta(k0, h, n)); // exp(i*beta_n*L) / (i*beta_n)
+            
+            // Calcul du terme de phase et de normalisation (Eq. 231)
+            complexe beta_n = Fem::compute_beta(k0, h, n);
+            complexe i_beta = complexe(0., 1.) * beta_n;
+            
+            // Constante = e^(i * beta * L) / (i * beta)
+            complexe constante = exp(i_beta * L) / i_beta;
 
             for (int m = 0; m < N_modes; ++m) {
-                F(m, n) = constante * S_m_p(n,m); // F++ U-+ 
-                F(m, n + N_modes) = constante * S_p_p(n,m); // F+- U++
-                F(m + N_modes, n) = constante * S_m_m(n,m); // F-+ U--
-                F(m + N_modes, n + N_modes) = constante * S_p_m(n,m); // F-- U+-
+                // Remplissage selon Eq (7) et définitions (231-235)
+                
+                // Bloc F++ (Haut-Gauche) : Utilise (Un-)+ => Source Droite, Mesure Droite
+                F(m, n) = constante * S_RR(n, m); 
+                
+                // Bloc F+- (Haut-Droite) : Utilise (Un+)+ => Source Gauche, Mesure Droite
+                F(m, n + N_modes) = constante * S_RL(n, m);
+                
+                // Bloc F-+ (Bas-Gauche)  : Utilise (Un-)- => Source Droite, Mesure Gauche
+                F(m + N_modes, n) = constante * S_LR(n, m);
+                
+                // Bloc F-- (Bas-Droite)  : Utilise (Un+)- => Source Gauche, Mesure Gauche
+                F(m + N_modes, n + N_modes) = constante * S_LL(n, m);
             }
         }
         return F;
@@ -88,16 +105,18 @@ public:
     // Calcul de G 
     // -------------------------------------------------------------------------
 
-    static vector<complexe> assemble_Gz(const MeshP2& mesh, int n_modes, double z1, double z2, double L,double k0, double h){
+    static vector<complexe> assemble_Gz(const MeshP2& mesh, int n_modes, double z1, double z2, double x_min, double x_max, double k0, double h){
         
         vector<complexe> Gz(2*n_modes);
         
         for (int m = 0; m < n_modes;m++){
             
             complexe denominateur = complexe(0.,1.) * Fem::compute_beta(k0, h, m);
+            complexe c_val = Fem::evaluate_c_1d(z2, h, m); // Attention: suppose y dans [0, h]
             
-            Gz[m] = exp(complexe(0.,1.) * Fem::compute_beta(k0, h, m) * (L+z1)) * Fem::evaluate_c_1d(z2,h,m) / denominateur;
-            Gz[m + n_modes] = exp(complexe(0.,1.) * Fem::compute_beta(k0, h, m) * (L-z1)) * Fem::evaluate_c_1d(z2,h,m) / denominateur;
+            // Phase relative au bord gauche (x_min) et droit (x_max)
+            Gz[m] = exp(complexe(0.,1.) * Fem::compute_beta(k0, h, m) * (x_max - z1)) * c_val / denominateur;
+            Gz[m + n_modes] = exp(complexe(0.,1.) * Fem::compute_beta(k0, h, m) * (z1 - x_min)) * c_val / denominateur;
         }
         return Gz;
     }

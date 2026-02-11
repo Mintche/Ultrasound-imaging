@@ -359,7 +359,7 @@ public:
 
                         // 2. Coordonnée physique Y au point d'intégration
 
-                        double y_phys = 0.5 * ((B.y + A.y) + t * (B.y - A.y));
+                        double y_phys = 0.5 * ((B.y + A.y) + t * (B.y - A.y)) - mesh.ymin; // Shift vers [0, h]
 
                         // 3. Remplissage de E
                         for (int i = 0; i < 3; ++i) {
@@ -383,8 +383,8 @@ public:
     // Assemblage matrice D
     // -------------------------------------------------------------------------
 
-    static void compute_D(FullMatrix<complexe>& D, int boundary_tag, int N, double h, double k0){
-            for (int j =0; j<N; j++) {
+    static void compute_D(FullMatrix<complexe>& D, int N_modes, double h, double k0){
+            for (int j =0; j<N_modes; j++) {
                 D(j,j) = complex<double>(0.0,1.0)* compute_beta(k0, h, j);
             }       
     }
@@ -453,7 +453,6 @@ public:
         for (int i = 0; i < Ndof; ++i) {
             G[i] = coeff * E(i, n_inc); 
         }
-
         return G;
     }
 };

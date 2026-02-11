@@ -156,10 +156,82 @@ void test_boundary_assembly() {
         cout << "[ECHEC] Matrice de Bord incorrecte (Somme=" << sum << ", attendu 1.0)." << endl;
 }
 
+void test_l2_error() {
+    cout << "\n--- Test 5 : Erreur L2 sur milieu homogene (Geo 0 a Lx) ---" << endl;
+
+    // 1. Chargement
+    string filename = "../data/test_ultrasound_sans_defaut.msh"; // Assurez-vous que c'est le bon nom
+    MeshP2 mesh;
+    mesh.read_msh_v2_ascii(filename, {}); // Pas de défauts pour ce test
+
+    // 2. Parametres
+    double k0 = 5.0; // Vérifiez que c'est cohérent avec la fréquence voulue
+    double h = mesh.Ly; 
+    
+    // IMPORTANT : On identifie la position physique du bord gauche
+    // D'après le .geo, xmin sera 0.0.
+    double x_source_location = mesh.xmin; 
+
+    int tag_left = 11;
+    int tag_right = 12;
+    int n_mode = 0; 
+    int N_modes = 5;
+
+    // 3. Assemblage Matrices (Inchangé)
+    vector<size_t> profile = Fem::compute_profile_enhanced(mesh, {tag_left, tag_right});
+    ProfileMatrix<complexe> K(profile);
+    Fem::A_matrix(mesh, K, 1.0);
+    Fem::B_matrix(mesh, K, k0, k0, -1.0); 
+
+    FullMatrix<complexe> E_minus = Fem::compute_E(mesh, N_modes, tag_left, k0);
+    FullMatrix<complexe> E_plus  = Fem::compute_E(mesh, N_modes, tag_right, k0);
+    FullMatrix<complexe> D(N_modes, N_modes);
+    Fem::compute_D(D, N_modes, h, k0);
+
+    Fem::T_matrix(K, E_minus, D, h, tag_left, -1.0);
+    Fem::T_matrix(K, E_plus, D, h, tag_right, -1.0);
+
+    K.factorize();
+
+    // 4. Vecteur Source (CORRECTION)
+    // On dit à la fonction : "La source est située à la coordonnée x_source_location"
+    // Comme x_source_location = 0, le terme de phase exp(...) vaudra 1.
+    vector<complexe> G_minus = Fem::assemble_source_vector(mesh, E_minus, n_mode, k0, x_source_location, -1.0);
+    
+    // Résolution
+    vector<complexe> U_fem(mesh.ndof());
+    K.solve(U_fem, G_minus);
+
+    // 5. Solution Exacte
+    // Onde plane : Phi(x) = exp(i * beta * x)
+    // Comme le maillage commence à 0, à l'entrée (x=0), exp(0) = 1.
+    // Cela correspond parfaitement à la source imposée (phase nulle à l'origine).
+    complexe beta = Fem::compute_beta(k0, h, n_mode);
+    vector<complexe> U_ex(mesh.ndof());
+    
+    for(const auto& node : mesh.nodes) {
+        double c0 = Fem::evaluate_c_1d(node.y, h, n_mode);
+        // node.x est dans [0, 1], donc la phase évolue de 0 à beta*1
+        U_ex[node.id] = c0 * exp(complexe(0, 1) * beta * node.x);
+    }
+
+    // 6. Calcul Erreur
+    ProfileMatrix<complexe> M_pure(profile);
+    Fem::B_matrix(mesh, M_pure, 1.0, 1.0, 1.0); 
+
+    vector<complexe> error = U_fem - U_ex;
+    double l2_error = sqrt(std::abs(error | (M_pure * error)));
+    double l2_sol = sqrt(std::abs(U_ex | (M_pure * U_ex)));
+    double rel_error = l2_error / l2_sol;
+
+    cout << "Erreur L2 relative: " << rel_error * 100.0 << " %" << endl;
+}
+
 int main() {
     test_shape_functions();
     test_gradients();
     test_assembly_single_triangle();
     test_boundary_assembly();
+    test_l2_error();
     return 0;
 }

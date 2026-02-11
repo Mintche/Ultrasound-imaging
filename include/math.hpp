@@ -10,6 +10,12 @@
 using namespace std;
 typedef complex<double> complexe;
 //---------------------------------------------------------------------------
+//  Helper for conjugation (generic T vs complex<T>)
+//---------------------------------------------------------------------------
+template<typename T> T conjugate(const T& v) { return v; }
+template<typename T> std::complex<T> conjugate(const std::complex<T>& v) { return std::conj(v); }
+
+//---------------------------------------------------------------------------
 //  Opérations sur vector<T>
 //---------------------------------------------------------------------------
 template<typename T> vector<T> operator+(const vector<T>& u, const vector<T>& v)
@@ -62,7 +68,8 @@ complexe operator|(const vector<complexe>& u, const vector<complexe>& v)
     return s;
 }
 
-template<typename T> T norm(const vector<T>&u)
+template<typename T> 
+double norm(const vector<T>&u)
 {
     return sqrt(abs(u|u));
 }
@@ -184,7 +191,7 @@ public:
             T d_val = (*this)(j, j);
             for (int k = 0; k < j; ++k) {
                 // d_val -= L_jk * conj(L_jk) * D_kk
-                d_val -= (*this)(j, k) * conj((*this)(j, k)) * (*this)(k, k);
+                d_val -= (*this)(j, k) * conjugate((*this)(j, k)) * (*this)(k, k);
             }
             
             if (std::abs(d_val) < 1e-14) {
@@ -197,7 +204,7 @@ public:
             for (int i = j + 1; i < n; ++i) {
                 T l_val = (*this)(i, j);
                 for (int k = 0; k < j; ++k) {
-                    l_val -= (*this)(i, k) * conj((*this)(j, k)) * (*this)(k, k);
+                    l_val -= (*this)(i, k) * conjugate((*this)(j, k)) * (*this)(k, k);
                 }
                 (*this)(i, j) = l_val * inv_d_val;
             }
@@ -233,7 +240,7 @@ public:
             for (int i = n - 1; i >= 0; --i) {
                 T sum = T(0);
                 for (int j = i + 1; j < n; ++j) {
-                    sum += conj((*this)(j, i)) * x[j]; // L*_ij = conj(L_ji)
+                    sum += conjugate((*this)(j, i)) * x[j]; // L*_ij = conj(L_ji)
                 }
                 x[i] -= sum;
             }

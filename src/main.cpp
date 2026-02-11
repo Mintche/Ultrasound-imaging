@@ -3,12 +3,18 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 // DEFINE PARAMETERS
 #define k0 30.0
 #define kd (k0 * 3)
 #define N_MODES 20
-#define EPSILON 1e-4 // Paramètre de régularisation Tikhonov
+#define EPSILON 1e-6 // Paramètre de régularisation Tikhonov
+
+// Tags physiques (à adapter selon le .msh)
+#define TAG_LEFT 11
+#define TAG_RIGHT 12
+#define TAG_DEFECT 2
 
 int main(int argc, char** argv) {
 
@@ -22,12 +28,14 @@ int main(int argc, char** argv) {
     // -------------------------------------------------------------------------
     printf("--- Initialisation FEM ---\n");
     MeshP2 mesh;
-    mesh.read_msh_v2_ascii(argv[1], {2});
+    mesh.read_msh_v2_ascii(argv[1], {TAG_DEFECT});
 
     double h = mesh.Ly;
     double L = mesh.Lx / 2.0;
-    int tag_left = 11;
-    int tag_right = 12;
+    double x_source_gauche = mesh.xmin;
+    double x_source_droite = mesh.xmax;
+    int tag_left = TAG_LEFT;
+    int tag_right = TAG_RIGHT;
 
     printf("H = %f | L = %f | Ndof : %zu\n", h, L, mesh.ndof());
 
@@ -42,7 +50,7 @@ int main(int argc, char** argv) {
     FullMatrix<complexe> E_minus = Fem::compute_E(mesh, N_MODES, tag_left, k0);
     FullMatrix<complexe> E_plus  = Fem::compute_E(mesh, N_MODES, tag_right, k0);
     FullMatrix<complexe> D(N_MODES, N_MODES);
-    Fem::compute_D(D, 0, N_MODES, h, k0);
+    Fem::compute_D(D, N_MODES, h, k0);
 
     // Conditions DtN (Dirichlet-to-Neumann)
     Fem::T_matrix(K, E_minus, D, h, tag_left, -1.0);
@@ -57,54 +65,47 @@ int main(int argc, char** argv) {
     // -------------------------------------------------------------------------
     printf("--- Simulation des ondes incidentes ---\n");
     
-    // Matrices de Scattering S(mesure, incident)
-    // S_m_p : Mesure Minus (Gauche), Incident Plus (depuis Gauche vers Droite)
-    FullMatrix<complexe> S_m_p(N_MODES, N_MODES); 
-    FullMatrix<complexe> S_p_p(N_MODES, N_MODES);
-    FullMatrix<complexe> S_m_m(N_MODES, N_MODES);
-    FullMatrix<complexe> S_p_m(N_MODES, N_MODES);
+    // Matrices de Scattering S_Mesure_Source
+    FullMatrix<complexe> S_LL(N_MODES, N_MODES); // Mesure Gauche, Source Gauche
+    FullMatrix<complexe> S_RL(N_MODES, N_MODES); // Mesure Droite, Source Gauche
+    FullMatrix<complexe> S_LR(N_MODES, N_MODES); // Mesure Gauche, Source Droite
+    FullMatrix<complexe> S_RR(N_MODES, N_MODES); // Mesure Droite, Source Droite
 
     vector<complexe> U(mesh.ndof());
     vector<complexe> u_s(mesh.ndof());
     vector<complexe> proj_plus(N_MODES), proj_minus(N_MODES);
 
-    // --- Cas 1 : Ondes incidentes depuis la Gauche (Phi+) ---
+    // --- Cas 1 : Ondes incidentes depuis la Gauche (Source Plus / u_n^+) ---
+    // Correspond aux colonnes de droite de F (F+-) et (F--)
     for (int n = 0; n < N_MODES; ++n) {
-        // Source pour le mode n entrant par la gauche
-        vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, n, k0, L, -1.0);
-        
-        // Résolution (utilise la factorisation pré-calculée)
+        vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, n, k0, x_source_gauche, 1.0);
         K.solve(U, G); 
 
-        // Extraction champ diffracté u^s = U_tot - Phi_inc
-        // true pour incident_from_left
-        LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, 1.0, L, k0, h, u_s, U);
+        // Extraction champ diffracté (incident depuis gauche -> direction = 1.0)
+        LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, 1.0, x_source_gauche, k0, h, u_s, U);
 
-        // Projections sur les modes
         LinearSampling::compute_projection(u_s, E_plus, E_minus, proj_plus, proj_minus);
 
-        // Remplissage des colonnes n des matrices S
         for(int m=0; m<N_MODES; ++m) {
-            S_p_p(m, n) = proj_plus[m];  // Mesure Droite, Inc Gauche
-            S_p_m(m, n) = proj_minus[m]; // Mesure Gauche, Inc Gauche
+            S_RL(n, m) = proj_plus[m];  // (Un+)+ : Mesure Droite
+            S_LL(n, m) = proj_minus[m]; // (Un+)- : Mesure Gauche
         }
     }
 
-    // --- Cas 2 : Ondes incidentes depuis la Droite (Phi-) ---
+    // --- Cas 2 : Ondes incidentes depuis la Droite (Source Minus / u_n^-) ---
+    // Correspond aux colonnes de gauche de F (F++) et (F-+)
     for (int n = 0; n < N_MODES; ++n) {
-        // Source pour le mode n entrant par la droite (utilise E_plus)
-        vector<complexe> G = Fem::assemble_source_vector(mesh, E_plus, n, k0, L, 1.0); 
-        
+        vector<complexe> G = Fem::assemble_source_vector(mesh, E_plus, n, k0, x_source_droite, -1.0); 
         K.solve(U, G);
 
-        // Extraction champ diffracté (false pour incident_from_right)
-        LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, -1.0, L, k0, h, u_s, U);
+        // Extraction champ diffracté (incident depuis droite -> direction = -1.0)
+        LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, -1.0, x_source_droite, k0, h, u_s, U);
 
         LinearSampling::compute_projection(u_s, E_plus, E_minus, proj_plus, proj_minus);
 
         for(int m=0; m<N_MODES; ++m) {
-            S_p_m(m, n) = proj_plus[m];
-            S_m_m(m, n) = proj_minus[m];
+            S_RR(n, m) = proj_plus[m];  // (Un-)+ : Mesure Droite
+            S_LR(n, m) = proj_minus[m]; // (Un-)- : Mesure Gauche
         }
     }
 
@@ -113,8 +114,8 @@ int main(int argc, char** argv) {
     // -------------------------------------------------------------------------
     printf("--- Construction LSM ---\n");
 
-    // Construction de F (2N x 2N)
-    FullMatrix<complexe> F = LinearSampling::compute_F(S_m_p, S_p_p, S_m_m, S_p_m, N_MODES, k0, h, L);
+    // Appel avec l'ordre corrigé
+    FullMatrix<complexe> F = LinearSampling::compute_F(S_LL, S_RL, S_LR, S_RR, N_MODES, k0, h, L);
 
     // Construction de la matrice normale régularisée : M = F* F + epsilon * I
     // On suppose que ta classe FullMatrix gère l'adjoint et le produit
@@ -133,42 +134,48 @@ int main(int argc, char** argv) {
     // Paramètres de la grille d'imagerie
     int grid_nx = 100;
     int grid_ny = 50;
-    double x_min = -L + 0.1, x_max = L - 0.1;
-    double y_min = 0.0 + 0.05, y_max = h - 0.05;
+    // On scanne l'intérieur du maillage (marges de sécurité pour éviter les singularités aux bords)
+    double x_scan_min = mesh.xmin + 0.05; double x_scan_max = mesh.xmax - 0.05;
+    double y_scan_min = mesh.ymin + 0.05; double y_scan_max = mesh.ymax - 0.05;
+    
+    // Buffer pour stocker les résultats avant l'écriture fichier
+    std::vector<double> indicators(grid_nx * grid_ny);
 
-    ofstream file("image_lsm.txt");
-    file << grid_nx << " " << grid_ny << "\n"; // Header
+    printf("Calcul en cours sur %d points...\n", grid_nx * grid_ny);
 
-    vector<complexe> H_z(2*N_MODES);
-    vector<complexe> RHS(2*N_MODES);
+        // Chaque thread a ses propres vecteurs de travail pour éviter les data-races
+        vector<complexe> H_z(2*N_MODES);
+        vector<complexe> F_adj_G(2*N_MODES);
 
-    for(int i = 0; i < grid_nx; ++i) {
-        double z1 = x_min + i * (x_max - x_min) / (grid_nx - 1);
-        
-        for(int j = 0; j < grid_ny; ++j) {
-            double z2 = y_min + j * (y_max - y_min) / (grid_ny - 1);
+        for(int i = 0; i < grid_nx; ++i) {
+            for(int j = 0; j < grid_ny; ++j) {
+                double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
+                double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
 
-            // 1. Calcul du second membre G_z (Vecteur Green théorique)
-            vector<complexe> G_z = LinearSampling::assemble_Gz(mesh, N_MODES, z1, z2, L, k0, h);
+                // 1. Calcul du second membre G_z
+                // Correction : on passe les bornes réelles du maillage
+                vector<complexe> G_z = LinearSampling::assemble_Gz(mesh, N_MODES, z1, z2 - mesh.ymin, mesh.xmin, mesh.xmax, k0, h);
 
-            // 2. Calcul du RHS du système normal : F* G_z
-            
-            vector<complexe> F_adj_G = F_adj * G_z;
+                // 2. Calcul du RHS : F* G_z
+                F_adj_G = F_adj * G_z;
 
-            // 3. Résolution du système (M * H_z = RHS)
-            M.solve(H_z, F_adj_G);
+                // 3. Résolution (M est déjà factorisée)
+                M.solve(H_z, F_adj_G);
 
-            // 4. Calcul de la norme
-            double norm_Hz = 0.0;
-            for(const auto& val : H_z) {
-                norm_Hz += norm(val); // norm renvoie |z|^2
+                // 4. Calcul de la norme et de l'indicateur
+                double norm_Hz = norm(H_z); 
+                indicators[i * grid_ny + j] = 1.0 / (norm_Hz + 1e-15);
             }
-            norm_Hz = sqrt(norm_Hz);
+        }
 
-            // 5. Stockage (Indicateur = 1 / ||Hz||)
-            double indicator = 1.0 / (norm_Hz + 1e-15); // Eviter div par 0
-            
-            file << z1 << " " << z2 << " " << indicator << "\n";
+    // Écriture finale (séquentielle et rapide)
+    ofstream file("image_lsm.txt");
+    file << grid_nx << " " << grid_ny << "\n";
+    for(int i = 0; i < grid_nx; ++i) {
+        double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
+        for(int j = 0; j < grid_ny; ++j) {
+            double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
+            file << z1 << " " << z2 << " " << indicators[i * grid_ny + j] << "\n";
         }
     }
     file.close();

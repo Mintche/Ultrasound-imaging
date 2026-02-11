@@ -1,41 +1,61 @@
-% plot_lsm.m
 clear; clc; close all;
 
 filename = 'image_lsm.txt';
 
-if ~exist(filename, 'file')
-    error('Le fichier %s n''existe pas. Lancez le main C++ d''abord.', filename);
+% 1. Ouverture du fichier
+fid = fopen(filename, 'r');
+if fid == -1
+    error('Impossible d''ouvrir le fichier %s. Vérifiez qu''il existe et qu''il n''est pas ouvert ailleurs.', filename);
 end
 
-% Lecture des données
-fid = fopen(filename, 'r');
-header = fscanf(fid, '%d %d', 2);
-nx = header(1);
-ny = header(2);
-data = fscanf(fid, '%f %f %f', [3, Inf]); % Lit [x, y, val]'
+% 2. Lecture de l''en-tête (Nx et Ny)
+dims = fscanf(fid, '%d %d', 2);
+nx = dims(1);
+ny = dims(2);
+
+fprintf('Lecture de la grille : Nx=%d, Ny=%d\n', nx, ny);
+
+% 3. Lecture du reste des données (x, y, valeur)
+% fscanf lit colonne par colonne, on stocke dans une matrice temporaire
+data = fscanf(fid, '%f %f %f', [3, Inf]); 
 fclose(fid);
 
-data = data'; % Transpose pour avoir colonnes x, y, val
+% Transposition pour avoir les données en lignes : [x, y, val]
+data = data'; 
 
-X = reshape(data(:,1), [ny, nx]);
-Y = reshape(data(:,2), [ny, nx]);
-Z = reshape(data(:,3), [ny, nx]);
+% 4. Extraction et Reshape
+% Attention : En C++, la boucle interne est sur Y (j) et externe sur X (i).
+% Matlab remplit par colonne, ce qui correspond à la boucle interne.
+% Donc reshape(..., ny, nx) est la bonne méthode.
 
-% Visualisation
-figure('Position', [100, 100, 1000, 400]);
+X_vec = data(:, 1);
+Y_vec = data(:, 2);
+val_vec = data(:, 3);
 
-% On trace souvent le log de l'indicateur pour mieux voir le contraste
-% Indicateur LSM = 1 / ||h||
-% Echelle log = 20 * log10(Indicateur)
-surf(X, Y, 20*log10(Z), 'EdgeColor', 'none');
+% Reconstruction des matrices 2D pour l'affichage
+X = reshape(X_vec, [ny, nx]);
+Y = reshape(Y_vec, [ny, nx]);
+Z = reshape(val_vec, [ny, nx]);
 
-view(2);
-axis equal; axis tight;
-colormap jet;
+% 5. Affichage
+figure('Name', 'Reconstruction LSM', 'Color', 'w');
+
+% On utilise pcolor pour une carte de couleur 2D
+% Z contient déjà 1/||g||, mais souvent on affiche le log pour mieux voir le contraste
+indicator = 20*log10(abs(Z)); 
+
+% Affichage principal
+surf(X, Y, indicator); 
+view(2); % Vue de dessus (2D)
+shading interp; % Lissage des couleurs (enlève la grille noire)
+axis equal tight; % Respecter les proportions physiques
+colormap("jet"); % Couleurs style "carte thermique"
 colorbar;
-title('Image Linear Sampling (dB)');
-xlabel('x');
-ylabel('y');
 
-% Inverser l'axe Y si besoin selon la convention du maillage
-set(gca, 'YDir', 'normal');
+% Esthétique
+title('Indicateur Linear Sampling Method (LSM)');
+xlabel('Position X (m)');
+ylabel('Position Y (m)');
+
+% Optionnel : Inverser l'échelle de couleur si nécessaire pour mieux voir les défauts
+% caxis([-20 max(max(indicator))]); % Ajuster selon la dynamique de vos résultats

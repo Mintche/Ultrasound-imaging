@@ -1,26 +1,16 @@
-// test_ultrasound_nodefect.geo
-// Domaine rectangulaire SANS défaut
-// Physical tags:
-//  - Surface MILIEU : 1
-//  - SIGMA_PLUS_L (gauche) : 11
-//  - SIGMA_MINUS_L (droite): 12
-//  - BORD_HAUT : 13
-//  - BORD_BAS  : 14
+// test_ultrasound_nodefect_sym.geo
+// Domaine rectangulaire SYMETRIQUE en X : [-Lx/2, +Lx/2]
+// Y reste défini sur [0, Ly]
 
 Mesh.MshFileVersion = 2.2;
-
 SetFactory("OpenCASCADE");
 
 // ----------------------
 // Paramètres géométriques
 // ----------------------
-Lx = 1.0;    // largeur du rectangle
-Ly = 0.6;    // hauteur du rectangle
-
-// ----------------------
-// Paramètres de maillage
-// ----------------------
-h_bulk = 0.04;   // taille dans le milieu (uniforme ici)
+Lx = 1.0;    // largeur totale
+Ly = 0.6;    // hauteur totale
+h_bulk = 0.04;   
 
 Mesh.CharacteristicLengthMin = h_bulk;
 Mesh.CharacteristicLengthMax = h_bulk;
@@ -28,7 +18,9 @@ Mesh.CharacteristicLengthMax = h_bulk;
 // ----------------------
 // Géométrie
 // ----------------------
-Rectangle(1) = {0, 0, 0, Lx, Ly};   // surface unique
+// Rectangle(1) = {X_coin, Y_coin, Z_coin, Largeur, Hauteur};
+// On décale le X du coin gauche à -Lx/2
+Rectangle(1) = {-Lx/2, 0, 0, Lx, Ly};   
 
 // ----------------------
 // Physical groups (surfaces)
@@ -38,24 +30,25 @@ Physical Surface(1) = {1}; // MILIEU
 // ----------------------
 // Physical groups (bords)
 // ----------------------
-// On récupère les courbes du contour du rectangle via BoundingBox.
-// Gmsh ne garantit pas l'ordre des courbes, donc on les classe par position.
-
 eps = 1e-6;
 
-// Courbes sur x=0 (gauche)
-cLeft[]  = Curve In BoundingBox {-eps, -eps, -1, eps, Ly+eps, 1};
-// Courbes sur x=Lx (droite)
-cRight[] = Curve In BoundingBox {Lx-eps, -eps, -1, Lx+eps, Ly+eps, 1};
-// Courbes sur y=Ly (haut)
-cTop[]   = Curve In BoundingBox {-eps, Ly-eps, -1, Lx+eps, Ly+eps, 1};
-// Courbes sur y=0 (bas)
-cBot[]   = Curve In BoundingBox {-eps, -eps, -1, Lx+eps, eps, 1};
+// GAUCHE : x = -Lx/2
+// On cherche dans une boite très fine autour de -Lx/2
+cLeft[]  = Curve In BoundingBox {-Lx/2-eps, -eps, -1, -Lx/2+eps, Ly+eps, 1};
 
-Physical Curve(11) = {cLeft[]};   // SIGMA_PLUS_L
-Physical Curve(12) = {cRight[]};  // SIGMA_MINUS_L
+// DROITE : x = +Lx/2
+// On cherche dans une boite très fine autour de +Lx/2
+cRight[] = Curve In BoundingBox {Lx/2-eps, -eps, -1, Lx/2+eps, Ly+eps, 1};
+
+// HAUT : y = Ly (couvre tout x de -Lx/2 à Lx/2)
+cTop[]   = Curve In BoundingBox {-Lx/2-eps, Ly-eps, -1, Lx/2+eps, Ly+eps, 1};
+
+// BAS : y = 0 (couvre tout x de -Lx/2 à Lx/2)
+cBot[]   = Curve In BoundingBox {-Lx/2-eps, -eps, -1, Lx/2+eps, eps, 1};
+
+Physical Curve(11) = {cLeft[]};   // SIGMA_GAUCHE
+Physical Curve(12) = {cRight[]};  // SIGMA_DROITE
 Physical Curve(13) = {cTop[]};    // BORD_HAUT
 Physical Curve(14) = {cBot[]};    // BORD_BAS
 
-// Optionnel : forcer triangles
 Mesh.RecombineAll = 0;
