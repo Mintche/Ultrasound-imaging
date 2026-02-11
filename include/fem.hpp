@@ -408,14 +408,6 @@ public:
             }
         }
 
-        // Pré-calcul de E*D pour éviter une multiplication dans la boucle triple
-        FullMatrix<complexe> ED(Ndof, Nmodes);
-        for(int i : active_dofs) {
-            for(int n=0; n<Nmodes; ++n) {
-                ED(i, n) = E(i, n) * D(n, n);
-            }
-        }
-
         for (int i : active_dofs) {
             
             for (int j : active_dofs) { 
@@ -423,7 +415,8 @@ public:
                 complexe val_T_ij = 0.0;
                 
                 for (int n = 0; n < Nmodes; ++n) {
-                    val_T_ij += ED(i, n) * E(j, n);
+                    // Calcul à la volée pour économiser la matrice temporaire ED
+                    val_T_ij += E(i, n) * D(n, n) * E(j, n);
                 }
 
                 if (abs(val_T_ij) > 1e-14) {

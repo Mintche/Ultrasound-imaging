@@ -17,8 +17,6 @@ SetFactory("OpenCASCADE");
 Lx = 2.0;    // largeur du rectangle (de -1 à +1)
 Ly = 0.6;    // hauteur du rectangle (de 0 à 0.6)
 
-// Position du défaut dans le nouveau repère centré
-// Ancien cx = 0.5 (sur 0..2). Nouveau cx = 0.5 - 1.0 = -0.5
 cx = 0;   
 cy = Ly/2;
 r  = 0.08;   // rayon du défaut
@@ -27,7 +25,7 @@ r  = 0.08;   // rayon du défaut
 // Paramètres de maillage
 // ----------------------
 h_bulk   = 0.04;   // taille dans le milieu
-h_defaut = 0.015;  // taille près du défaut
+h_defaut = 0.01;  // taille près du défaut
 
 Mesh.CharacteristicLengthMin = h_defaut;
 Mesh.CharacteristicLengthMax = h_bulk;
