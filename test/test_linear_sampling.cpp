@@ -40,8 +40,8 @@ int main() {
 
     // 2. Test compute_F
     cout << "Testing compute_F..." << endl;
-    // Signature: compute_F(S_p_m, S_m_p, S_p_p, S_m_m, ...)
-    FullMatrix<complexe> F = LinearSampling::compute_F(S_pm, S_mp, S_pp, S_mm, N_MODES, k0, h, L);
+    // Signature: compute_F(S_LL, S_RL, S_LR, S_RR, ...)
+    FullMatrix<complexe> F = LinearSampling::compute_F(S_pm, S_pp, S_mm, S_mp, N_MODES, k0, h, L);
 
     // Check dimensions: F should be 2N x 2N
     if (F.rows() != (size_t)(2 * N_MODES)) {
@@ -71,8 +71,10 @@ int main() {
     
     double z1 = 0.0; // center x
     double z2 = h/2.0; // center y
+    double x_min = dummy_mesh.xmin;
+    double x_max = dummy_mesh.xmax;
     
-    vector<complexe> Gz = LinearSampling::assemble_Gz(dummy_mesh, N_MODES, z1, z2, L, k0, h);
+    vector<complexe> Gz = LinearSampling::assemble_Gz(dummy_mesh, N_MODES, z1, z2, x_min, x_max, k0, h);
     
     if (Gz.size() == (size_t)(2 * N_MODES)) {
         cout << "[OK] Gz size correct." << endl;

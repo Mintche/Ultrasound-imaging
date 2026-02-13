@@ -150,7 +150,7 @@ void test_boundary_assembly() {
     complexe sum = 0;
     for(int i=0; i<E.rows(); ++i) sum += E(i, 0);
     
-    if(check_close(sum, 1.0))
+    if(check_close(sum, complexe(1.0,0.0)))
         cout << "[OK] Matrice de Bord (integrale longueur correcte)." << endl;
     else
         cout << "[ECHEC] Matrice de Bord incorrecte (Somme=" << sum << ", attendu 1.0)." << endl;

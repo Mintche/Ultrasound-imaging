@@ -11,7 +11,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "math.hpp" // for complexe (std::complex<double>)
+#include "math.hpp" 
 
 /*
   Mesh reader + P2 enrichment (Student E2)

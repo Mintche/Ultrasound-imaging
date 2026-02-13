@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     }
 
     // -------------------------------------------------------------------------
-    // 1. INITIALISATION FEM & MATRICES SYSTEME
+    // INITIALISATION FEM & MATRICES SYSTEME
     // -------------------------------------------------------------------------
     printf("--- Initialisation FEM ---\n");
     MeshP2 mesh;
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     K.factorize(); 
 
     // -------------------------------------------------------------------------
-    // 2. SIMULATION ET CONSTRUCTION DES MATRICES S (Scattering)
+    // SIMULATION ET CONSTRUCTION DES MATRICES S (Scattering)
     // -------------------------------------------------------------------------
     printf("--- Simulation des ondes incidentes ---\n");
     
@@ -110,15 +110,14 @@ int main(int argc, char** argv) {
     }
 
     // -------------------------------------------------------------------------
-    // 3. CONSTRUCTION DU SYSTEME LINEAR SAMPLING
+    // CONSTRUCTION DU SYSTEME LINEAR SAMPLING
     // -------------------------------------------------------------------------
     printf("--- Construction LSM ---\n");
 
-    // Appel avec l'ordre corrigé
     FullMatrix<complexe> F = LinearSampling::compute_F(S_LL, S_RL, S_LR, S_RR, N_MODES, k0, h, L);
 
     // Construction de la matrice normale régularisée : M = F* F + epsilon * I
-    // On suppose que ta classe FullMatrix gère l'adjoint et le produit
+
     FullMatrix<complexe> F_adj = F.adjoint();
     FullMatrix<complexe> I(2*N_MODES,2*N_MODES);
     for (int i = 0; i < 2*N_MODES;i++) I(i,i) = 1.0;
@@ -127,7 +126,7 @@ int main(int argc, char** argv) {
     M.factorize();
 
     // -------------------------------------------------------------------------
-    // 4. BOUCLE D'IMAGERIE
+    // BOUCLE D'IMAGERIE
     // -------------------------------------------------------------------------
     printf("--- Calcul de l'image (Grille de points z) ---\n");
 
@@ -153,7 +152,6 @@ int main(int argc, char** argv) {
                 double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
 
                 // 1. Calcul du second membre G_z
-                // Correction : on passe les bornes réelles du maillage
                 vector<complexe> G_z = LinearSampling::assemble_Gz(mesh, N_MODES, z1, z2 - mesh.ymin, mesh.xmin, mesh.xmax, k0, h);
 
                 // 2. Calcul du RHS : F* G_z
@@ -168,7 +166,7 @@ int main(int argc, char** argv) {
             }
         }
 
-    // Écriture finale (séquentielle et rapide)
+    // Écriture finale
     ofstream file("image_lsm.txt");
     file << grid_nx << " " << grid_ny << "\n";
     for(int i = 0; i < grid_nx; ++i) {

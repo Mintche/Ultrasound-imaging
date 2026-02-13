@@ -5,8 +5,8 @@
 #include <cmath>
 #include <iostream>
 #include <algorithm>
-#include "math.hpp" // Ta classe matrice
-#include "mesh.hpp" // La classe maillage
+#include "math.hpp"
+#include "mesh.hpp"
 
 using namespace std;
 using namespace usim;
@@ -160,7 +160,7 @@ public:
                     }
                 }
             }
-            // Suppression des doublons pour éviter une boucle N^2 inutile
+            // Suppression des doublons
             sort(boundary_nodes.begin(), boundary_nodes.end());
             boundary_nodes.erase(unique(boundary_nodes.begin(), boundary_nodes.end()), boundary_nodes.end());
 
@@ -312,11 +312,11 @@ public:
     // Assemblage matrice E
     // -------------------------------------------------------------------------
 
-    static FullMatrix<complex<double>> compute_E(const MeshP2& mesh, int N_modes, int boundary_tag, double k0) {
+    static FullMatrix<complexe> compute_E(const MeshP2& mesh, int N_modes, int boundary_tag, double k0) {
         
         int ndof = mesh.ndof();
         // E est une matrice (Ndof x N_modes)
-        FullMatrix<complex<double>> E(ndof, N_modes); 
+        FullMatrix<complexe> E(ndof, N_modes); 
 
         auto qp = get_quadrature_points_1d(); // Quadrature de Gauss 1D
         vector<double> phi_1d(3);
@@ -359,7 +359,7 @@ public:
 
                         // 2. Coordonnée physique Y au point d'intégration
 
-                        double y_phys = 0.5 * ((B.y + A.y) + t * (B.y - A.y)) - mesh.ymin; // Shift vers [0, h]
+                        double y_phys = 0.5 * ((B.y + A.y) + t * (B.y - A.y)) - mesh.ymin; // Shift si le maillage n'est pas centré
 
                         // 3. Remplissage de E
                         for (int i = 0; i < 3; ++i) {
