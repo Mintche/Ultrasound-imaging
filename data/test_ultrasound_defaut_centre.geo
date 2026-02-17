@@ -19,7 +19,7 @@ Ly = 0.6;    // hauteur du rectangle (de 0 à 0.6)
 
 cx = 0;   
 cy = Ly/2;
-r  = 0.08;   // rayon du défaut
+r  = 0.03;   // rayon du défaut
 
 // ----------------------
 // Paramètres de maillage
