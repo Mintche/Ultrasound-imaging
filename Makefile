@@ -1,5 +1,5 @@
 CC = g++
-CXXFLAGS = -Iinclude -Wall -std=c++17 -O3 -f -fopenmp
+CXXFLAGS = -Iinclude -Wall -std=c++17 -O3 -fopenmp
 
 SRC = src/main.cpp
 OBJ = us_imaging.x
