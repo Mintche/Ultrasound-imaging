@@ -91,13 +91,13 @@ class FullMatrix {
 
 protected:
 
-    
+    int n_rows;
+    int n_cols;
     vector<T> coefs;
     bool is_ldlt_factorized = false;
     
 public:
-    int n_rows;
-    int n_cols;
+    
 
     FullMatrix(int n, int m) : n_rows(n), n_cols(m), coefs(n * m, T(0)) {}
 

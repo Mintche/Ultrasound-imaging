@@ -154,16 +154,23 @@ void compute_average_image(MeshP2 mesh, int num_k_points, double c, double c_d, 
                                      int grid_nx, int grid_ny,double percentage, double noise_level) {
 
     // On génère une liste de k0 et kd pour une plage [k_max/10, K_max] avec k0=2*pi*f/c et kd=2*pi*f/c_d 
-    double k_max = 2.0 * M_PI / (h / 6.0); // k_max = 2*pi / (h/6)
+    //double k_max = 2.0 * M_PI / (h / 6.0); // k_max = 2*pi / (h/6)
     vector<double> kd_values(num_k_points);
     vector<double> k_values(num_k_points);
-    double cmin=c;
+   /* double cmin=c;
     if (c_d < c) cmin = c_d;
     for (int i = 0; i < num_k_points; ++i) {
         double f = (i + 1) * k_max * cmin/ (2.0*M_PI*10.0 * num_k_points); // Fréquence linéairement espacée
         k_values[i] = 2.0 * M_PI * f / c; // k0 = 2*pi*f/c
         kd_values[i] = 2.0 * M_PI * f / c_d; // kd = 2*pi*f/c_d
-    }
+    }*/
+    k_values[0] = 24;
+    k_values[1] = 30;
+    k_values[2] = 36;
+
+    kd_values[0] = 3*24;
+    kd_values[1] = 3*30;
+    kd_values[2] = 3*36;
 
     // Buffer pour stocker les images intermédiaires
     vector<vector<double>> all_indicators(num_k_points, vector<double>(grid_nx * grid_ny));
