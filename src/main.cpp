@@ -8,7 +8,6 @@
 // DEFINE PARAMETERS
 #define k0 30.
 #define kd (k0*3)
-#define N_MODES 20
 #define EPSILON 1e-6 // Paramètre de régularisation Tikhonov
 
 // Tags physiques (à adapter selon le .msh)
@@ -41,6 +40,9 @@ int main(int argc, char** argv) {
     double noise_level = 0.05*(1/sqrt(2*h)); // Niveau de bruit
 
     printf("H = %f | L = %f | Ndof : %zu\n", h, L, mesh.ndof());
+
+    //Calcul de N_MODES (nombre de modes de guide d'ondes) : on prend tous les modes propagatifs + quelques modes évanescents pour la précision
+    int N_MODES = floor(h * min(k0,kd) / M_PI) + 5; 
 
     // Calcul du profil et matrices
     vector<size_t> profile = Fem::compute_profile_enhanced(mesh, {tag_left, tag_right});
