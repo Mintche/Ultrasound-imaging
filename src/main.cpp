@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
     printf("--- Initialisation FEM ---\n");
     MeshP2 mesh;
     mesh.read_msh_v2_ascii(argv[1], {TAG_DEFECT});
+    mesh.write_matlab_mesh_m("mesh_out.m");
     //mesh.write_defect_coords_txt("defect_coords.txt"); si python
 
     double h = mesh.Ly;
