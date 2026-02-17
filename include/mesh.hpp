@@ -373,6 +373,19 @@ public:
         out << "% title('Mesh (P1 view)');\n";
     }
 
+    // Export des triangles du défaut pour Python (format: x1 y1 x2 y2 x3 y3)
+    void write_defect_coords_txt(const std::string& filename) const {
+        std::ofstream out(filename);
+        for(const auto& t : triangles) {
+            if(t.is_defect) {
+                for(int k=0; k<3; ++k) {
+                    out << nodes[t.node_ids[k]].x << " " << nodes[t.node_ids[k]].y << (k==2 ? "" : " ");
+                }
+                out << "\n";
+            }
+        }
+    }
+
     // Export nodal complex field to Matlab/Octave .m script.
     // Creates variables:
     //   Ure, Uim (Nbpt x 1), and optionally Umag.

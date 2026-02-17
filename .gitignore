@@ -11,3 +11,9 @@ test/*.msh
 mesh_out.m
 
 solution_out.m
+
+.venv
+
+plot_lsm.py
+
+*.png

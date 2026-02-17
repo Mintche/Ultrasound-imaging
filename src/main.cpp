@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
     printf("--- Initialisation FEM ---\n");
     MeshP2 mesh;
     mesh.read_msh_v2_ascii(argv[1], {TAG_DEFECT});
+    //mesh.write_defect_coords_txt("defect_coords.txt"); si python
 
     double h = mesh.Ly;
     double L = mesh.Lx / 2.0;
@@ -142,12 +143,13 @@ int main(int argc, char** argv) {
 
     printf("Calcul en cours sur %d points...\n", grid_nx * grid_ny);
 
-        // Chaque thread a ses propres vecteurs de travail pour éviter les data-races
-        vector<complexe> H_z(2*N_MODES);
-        vector<complexe> F_adj_G(2*N_MODES);
+#pragma omp parallel for collapse(2) schedule(dynamic)
+    for(int i = 0; i < grid_nx; ++i) {
+        for(int j = 0; j < grid_ny; ++j) {
+                // Chaque thread a ses propres vecteurs de travail
+                vector<complexe> H_z(2*N_MODES);
+                vector<complexe> F_adj_G(2*N_MODES);
 
-        for(int i = 0; i < grid_nx; ++i) {
-            for(int j = 0; j < grid_ny; ++j) {
                 double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
                 double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
 

@@ -57,5 +57,16 @@ title('Indicateur Linear Sampling Method (LSM)');
 xlabel('Position X (m)');
 ylabel('Position Y (m)');
 
+% 6. Superposition du défaut réel (pour validation)
+if exist('mesh_out.m', 'file')
+    run('mesh_out.m');
+    hold on;
+    % On affiche les triangles marqués comme défauts (IsDef == 1)
+    defect_tris = Tri(IsDef == 1, 1:3);
+    if ~isempty(defect_tris)
+        trimesh(defect_tris, Coor(:,1), Coor(:,2), 'Color', 'r', 'LineWidth', 1.5, 'DisplayName', 'Défaut réel');
+    end
+end
+
 % Optionnel : Inverser l'échelle de couleur si nécessaire pour mieux voir les défauts
 % caxis([-20 max(max(indicator))]); % Ajuster selon la dynamique de vos résultats
