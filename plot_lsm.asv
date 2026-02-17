@@ -64,7 +64,7 @@ if exist('mesh_out.m', 'file')
     % On affiche les triangles marqués comme défauts (IsDef == 1)
     defect_tris = Tri(IsDef == 1, 1:3);
     if ~isempty(defect_tris)
-        trimesh(defect_tris, Coor(:,1), Coor(:,2), 'Color', 'w', 'LineWidth', 0.5, 'DisplayName', 'Défaut réel');
+        trimesh(defect_tris, Coor(:,1), Coor(:,2), 'Color', 'w', 'LineWidth', 1.5, 'DisplayName', 'Défaut réel');
     end
 end
 

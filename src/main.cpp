@@ -6,8 +6,8 @@
 #include <vector>
 
 // DEFINE PARAMETERS
-#define k0 30.0
-#define kd (k0 * 3)
+#define k0 30.
+#define kd (k0*3)
 #define N_MODES 20
 #define EPSILON 1e-6 // Paramètre de régularisation Tikhonov
 
