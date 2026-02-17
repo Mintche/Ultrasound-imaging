@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     double x_source_droite = mesh.xmax;
     int tag_left = TAG_LEFT;
     int tag_right = TAG_RIGHT;
-    double noise_level = 0.02*(1/sqrt(2*h)); // Niveau de bruit
+    double noise_level = 0.05*(1/sqrt(2*h)); // Niveau de bruit
 
     printf("H = %f | L = %f | Ndof : %zu\n", h, L, mesh.ndof());
 
