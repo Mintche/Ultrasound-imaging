@@ -18,7 +18,7 @@
 int main(int argc, char** argv) {
 
     if(argc < 2){
-        printf("Usage: %s <mesh.msh>\n", argv[0]);
+        printf("Usage: %s <mesh.msh> <noise percentage>\n", argv[0]);
         return 1;
     }
 
@@ -37,7 +37,8 @@ int main(int argc, char** argv) {
     double x_source_droite = mesh.xmax;
     int tag_left = TAG_LEFT;
     int tag_right = TAG_RIGHT;
-    double noise_level = 0.05*(1/sqrt(2*h)); // Niveau de bruit
+    double percentage = atof(argv[1]);
+    double noise_level = (percentage == 0) ? -1 : percentage*(1/sqrt(2*h)); // Niveau de bruit
 
     printf("H = %f | L = %f | Ndof : %zu\n", h, L, mesh.ndof());
 
@@ -89,7 +90,7 @@ int main(int argc, char** argv) {
         // Extraction champ diffracté (incident depuis gauche -> direction = 1.0)
         LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, 1.0, x_source_gauche, k0, h, u_s, U);
 
-        LinearSampling::add_gaussian_noise(U, noise_level);
+        if (percentage != -1) LinearSampling::add_gaussian_noise(U, noise_level);
 
         LinearSampling::compute_projection(u_s, E_plus, E_minus, proj_plus, proj_minus);
 
@@ -108,7 +109,7 @@ int main(int argc, char** argv) {
         // Extraction champ diffracté (incident depuis droite -> direction = -1.0)
         LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, -1.0, x_source_droite, k0, h, u_s, U);
 
-        LinearSampling::add_gaussian_noise(U, noise_level);
+        if (percentage != -1) LinearSampling::add_gaussian_noise(U, noise_level);
 
         LinearSampling::compute_projection(u_s, E_plus, E_minus, proj_plus, proj_minus);
 
