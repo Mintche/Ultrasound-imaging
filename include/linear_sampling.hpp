@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <random>
 
 #include "fem.hpp"
 
@@ -122,11 +123,22 @@ public:
     }
 
     // -------------------------------------------------------------------------
-    // Generation d'image matlab de log(1/||h||)
+    // Bruit Gaussien
     // -------------------------------------------------------------------------
+
+    static void add_gaussian_noise(vector<complexe>& data, double noise_level) {
+        std::random_device rd;
+        std::mt19937 generator(rd());
+        std::normal_distribution<double> distribution(0.0, noise_level);
+
+        for (auto& val : data) {
+            double noise_real = distribution(generator);
+            double noise_imag = distribution(generator);
+            val += complexe(noise_real, noise_imag);
+        }
+    }
+
     
-
-
 };
 
 #endif // LINEAR_SAMPLING_HPP
