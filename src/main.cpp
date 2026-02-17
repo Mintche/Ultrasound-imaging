@@ -143,7 +143,6 @@ int main(int argc, char** argv) {
 
     printf("Calcul en cours sur %d points...\n", grid_nx * grid_ny);
 
-#pragma omp parallel for collapse(2) schedule(dynamic)
     for(int i = 0; i < grid_nx; ++i) {
         for(int j = 0; j < grid_ny; ++j) {
                 // Chaque thread a ses propres vecteurs de travail
