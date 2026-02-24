@@ -59,6 +59,15 @@ template<typename T> T operator|(const vector<T>& u, const vector<T>& v)
     return s;
 }
 
+template<typename T> double normesup(const vector<T>& u)
+{
+    double normesup= 0.;
+    for(auto const& it : u){
+        if (abs(it) > normesup) normesup = abs(it);
+    }
+    return normesup;
+}
+
 template<>
 complexe operator|(const vector<complexe>& u, const vector<complexe>& v)
 {

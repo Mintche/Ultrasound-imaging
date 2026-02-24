@@ -167,12 +167,14 @@ void compute_average_image(MeshP2 mesh, int num_k_points, vector<double> &k_valu
                      grid_nx, grid_ny, all_indicators[idx], percentage, noise_level);
     }
 
+
+
     // Moyenne des images intermédiaires
     vector<double> average_indicators(grid_nx * grid_ny, 0.0);
     for (int i = 0; i < grid_nx * grid_ny; ++i) {
         double sum = 0.0;
         for (int idx = 0; idx < num_k_points; ++idx) {
-            sum += all_indicators[idx][i];
+            sum += all_indicators[idx][i] / normesup(all_indicators[idx]);
         }
         average_indicators[i] = sum / num_k_points;
     }
@@ -216,7 +218,7 @@ int main(int argc, char** argv) {
     mesh.write_matlab_mesh_m("mesh_out.m");
     //mesh.write_defect_coords_txt("defect_coords.txt"); si python
 
-    int num_k_points = 1; // Nombre de points dans la plage de fréquences
+    int num_k_points = 4; // Nombre de points dans la plage de fréquences
     double h = mesh.Ly;
     double L = mesh.Lx / 2.0;
     double x_source_gauche = mesh.xmin;
@@ -230,20 +232,18 @@ int main(int argc, char** argv) {
     double noise_level = (percentage == 0) ? -1 : percentage*(1/sqrt(2*h)); // Niveau de bruit
 
 
-    double h_mesh = mesh.compute_h_max();
-    // On génère une liste de k0 et kd pour une plage [k_max/10, K_max] avec k0=2*pi*f/c et kd=2*pi*f/c_d 
-    double k_max = 2.0 * M_PI / (h_mesh/6.0); // k_max = 2*pi*6 / h
+    double h_mesh = mesh.compute_h_max(); 
+    double lambda_min = h_mesh/6.0; 
     vector<double> kd_values(num_k_points);
     vector<double> k_values(num_k_points);
-    double cmin=C;
-    if (C_D < C) cmin = C_D;
+    double cmin = (C < C_D) ? C : C_D;
     for (int i = 0; i < num_k_points; ++i) {
-        double f = (i + 1) * k_max * cmin/ (2.0*M_PI * num_k_points); // Fréquence linéairement espacée
+        double f = (i + 1) * (cmin/lambda_min*num_k_points) ; // f = c/lambda
         k_values[i] = 2.0 * M_PI * f / C; // k0 = 2*pi*f/c
         kd_values[i] = 2.0 * M_PI * f / C_D; // kd = 2*pi*f/c_d
     }
 
-    printf("h_mesh_max = %f |kmax = %f | k0 range: [%f, %f] | kd range: [%f, %f]\n", h_mesh, k_max, k_values[0], k_values[num_k_points-1], kd_values[0], kd_values[num_k_points-1]);
+    printf("h_mesh_max = %f |kmax = %f | k0 range: [%f, %f] | kd range: [%f, %f]\n", h_mesh, lambda_min, k_values[0], k_values[num_k_points-1], kd_values[0], kd_values[num_k_points-1]);
     /*k_values[0] = 30;
     k_values[1] = 30;
     k_values[2] = 36;
