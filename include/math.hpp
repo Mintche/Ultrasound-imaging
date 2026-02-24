@@ -338,7 +338,7 @@ public:
         return res;
     }
 
-    size_t rows const (){
+    size_t rows (){
         return n_rows;
     }
 
