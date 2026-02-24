@@ -97,6 +97,7 @@ protected:
     bool is_ldlt_factorized = false;
     
 public:
+    
 
     FullMatrix(int n, int m) : n_rows(n), n_cols(m), coefs(n * m, T(0)) {}
 
