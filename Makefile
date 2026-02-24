@@ -3,7 +3,7 @@ CXXFLAGS = -Iinclude -Wall -Wextra -std=c++17 -O3
 LDFLAGS = 
 
 # Liste des fichiers sources (ajoute src/linear_sampling.cpp si tu en as un)
-SRCS = src/main_temp.cpp src/fem.cpp src/mesh.cpp src/linear_sampling.cpp
+SRCS = src/main.cpp src/fem.cpp src/mesh.cpp src/linear_sampling.cpp
 # Génération automatique de la liste des objets (.o)
 OBJS = $(SRCS:.cpp=.o)
 

@@ -16,7 +16,7 @@
 #define TAG_DEFECT 2
 
 
-void compute_for_k(MeshP2 mesh,double k0, double kd, double h, double L, int tag_left, int tag_right, double x_source_gauche, double x_source_droite, double epsilon,
+void compute_for_k(MeshP2 mesh,double k0, double kd, double h, double L, int tag_left, int tag_right, double x_source_gauche, double x_source_droite,
                                      int grid_nx, int grid_ny, std::vector<double>& indicators, double percentage, double noise_level) {
     int N_MODES = floor(h * std::min(k0,kd) / M_PI) + 5; 
     printf("Calcul pour k0 = %f (f = %f Hz) | N_modes = %d\n", k0, k0*C/(2*M_PI), N_MODES);                                    
@@ -150,7 +150,7 @@ void compute_for_k(MeshP2 mesh,double k0, double kd, double h, double L, int tag
 
  }
 
-void compute_average_image(MeshP2 mesh, int num_k_points, std::vector<double> &k_values, std::vector<double> &kd_values, double h, double L, int tag_left, int tag_right, double x_source_gauche, double x_source_droite, double epsilon,
+void compute_average_image(MeshP2 mesh, int num_k_points, std::vector<double> &k_values, std::vector<double> &kd_values, double h, double L, int tag_left, int tag_right, double x_source_gauche, double x_source_droite,
                                      int grid_nx, int grid_ny,double percentage, double noise_level) {
 
     // Buffer pour stocker les images intermédiaires
@@ -163,7 +163,7 @@ void compute_average_image(MeshP2 mesh, int num_k_points, std::vector<double> &k
 
 
         // Calcul des matrices et de l'image pour cette fréquence
-        compute_for_k(mesh, k0, kd, h, L, tag_left, tag_right, x_source_gauche, x_source_droite, epsilon,
+        compute_for_k(mesh, k0, kd, h, L, tag_left, tag_right, x_source_gauche, x_source_droite,
                      grid_nx, grid_ny, all_indicators[idx], percentage, noise_level);
     }
 
@@ -255,7 +255,7 @@ int main(int argc, char** argv) {
 
     printf("H = %f | L = %f | Ndof : %zu\n", h, L, mesh.ndof());
 
-    compute_average_image(mesh, num_k_points,k_values,kd_values, h, L, tag_left, tag_right, x_source_gauche , x_source_droite, EPSILON,
+    compute_average_image(mesh, num_k_points,k_values,kd_values, h, L, tag_left, tag_right, x_source_gauche , x_source_droite,
                      grid_nx, grid_ny, percentage, noise_level);
     return 0;
 }
