@@ -102,6 +102,42 @@ public:
     double xmin = 0.0, xmax = 0.0;
     double ymin = 0.0, ymax = 0.0;
     double Lx   = 0.0, Ly   = 0.0;
+    double h_max = 0.0;  // longueur caractéristique max (calculée)
+
+
+    double compute_h_max(bool store = true) {
+        if (triangles.empty() || nodes.empty()) {
+            if (store) h_max = 0.0;
+            return 0.0;
+        }
+
+        auto dist = [&](int ia, int ib) -> double {
+            const auto& A = nodes[ia];
+            const auto& B = nodes[ib];
+            const double dx = A.x - B.x;
+            const double dy = A.y - B.y;
+            return std::sqrt(dx*dx + dy*dy);
+        };
+
+        double hm = 0.0;
+
+        for (const auto& t : triangles) {
+            // on utilise uniquement les sommets P1 (1..3) => node_ids[0..2]
+            const int i1 = t.node_ids[0];
+            const int i2 = t.node_ids[1];
+            const int i3 = t.node_ids[2];
+
+            const double e12 = dist(i1, i2);
+            const double e23 = dist(i2, i3);
+            const double e31 = dist(i3, i1);
+
+            const double ht = std::max(e12, std::max(e23, e31));
+            if (ht > hm) hm = ht;
+        }
+
+        if (store) h_max = hm;
+        return hm;
+    }
 
     void compute_bbox_and_dims(){
         if(nodes.empty()){

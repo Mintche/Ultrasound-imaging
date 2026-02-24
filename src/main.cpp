@@ -238,7 +238,7 @@ int main(int argc, char** argv) {
    /* double cmin=c;
     if (c_d < c) cmin = c_d;
     for (int i = 0; i < num_k_points; ++i) {
-        double f = (i + 1) * k_max * cmin/ (2.0*M_PI*10.0 * num_k_points); // Fréquence linéairement espacée
+        double f = (i + 1) * k_max * cmin/ (2.0*M_PI * num_k_points); // Fréquence linéairement espacée
         k_values[i] = 2.0 * M_PI * f / c; // k0 = 2*pi*f/c
         kd_values[i] = 2.0 * M_PI * f / c_d; // kd = 2*pi*f/c_d
     }*/
