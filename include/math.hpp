@@ -339,7 +339,7 @@ public:
         return res;
     }
 
-    size_t rows(){
+    size_t rows (){
         return n_rows;
     }
 
