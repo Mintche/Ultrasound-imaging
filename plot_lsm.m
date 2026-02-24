@@ -1,6 +1,6 @@
 clear; clc; close all;
 
-filename = 'average_image_lsm.txt';
+filename = 'image_lsm.txt';
 
 % 1. Ouverture du fichier
 fid = fopen(filename, 'r');

@@ -14244,6 +14244,3 @@ EdgeRef = [ ...
 0 0 0;
 ];
 
-% Quick visualization (P1 faces only):
-% trisurf(Tri(:,1:3), Coor(:,1), Coor(:,2), 0*Coor(:,1)); view(2); axis equal; shading interp;
-% title('Mesh (P1 view)');

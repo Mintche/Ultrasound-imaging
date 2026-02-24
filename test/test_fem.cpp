@@ -148,7 +148,7 @@ void test_boundary_assembly() {
     // Somme des éléments de la colonne 0 de E = Int(sum(phi_i) * c_0) = Int(1 * 1) = 1.
     
     complexe sum = 0;
-    for(int i=0; i<E.rows(); ++i) sum += E(i, 0);
+    for(int i=0; i<static_cast<int>(E.rows()); ++i) sum += E(i, 0);
     
     if(check_close(sum, complexe(1.0,0.0)))
         cout << "[OK] Matrice de Bord (integrale longueur correcte)." << endl;
