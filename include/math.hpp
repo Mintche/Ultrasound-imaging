@@ -474,7 +474,12 @@ public:
 
     // Factorisation LDL^T en place
     void factorize() {
-        if(is_factorized) return; 
+        if(is_factorized) return;
+        
+        vector<T> diag(n);
+        for(int i=0; i<n; ++i) {
+            diag[i] = coefs[offsets[i] + i - static_cast<int>(p[i])];
+        }
 
         for (int i = 0; i < n; ++i) {
             T d_val = T(0);
@@ -489,17 +494,19 @@ public:
                 const T* row_j = &coefs[offsets[j] - pj];
 
                 for (int k = start_k; k < j; ++k) {
-                    sum += row_i[k] * row_j[k] * coefs[offsets[k] + k - static_cast<int>(p[k])];
+                    // sum += L_ik * L_jk * D_k
+                    sum += row_i[k] * row_j[k] * diag[k];
                 }
                 
                 T& A_ij = coefs[offsets[i] + j - pi];
-                A_ij = (A_ij - sum) / coefs[offsets[j] + j - pj];
+                A_ij = (A_ij - sum) / diag[j];
                 
-                d_val += A_ij * A_ij * coefs[offsets[j] + j - pj];
+                d_val += A_ij * A_ij * diag[j];
             }
-            coefs[offsets[i] + i - pi] -= d_val;
+            diag[i] -= d_val;
+            coefs[offsets[i] + i - pi] = diag[i];
             
-            if (abs(coefs[offsets[i] + i - pi]) < 1e-14) throw runtime_error("Pivot nul dans LDLT");
+            if (abs(diag[i]) < 1e-14) throw runtime_error("Pivot nul dans LDLT");
         }
         is_factorized = true;
     }

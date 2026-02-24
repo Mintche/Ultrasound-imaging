@@ -7,6 +7,9 @@
 #include <algorithm>
 #include "math.hpp"
 #include "mesh.hpp"
+#include <queue>
+#include <set>
+#include <map>
 
 using namespace std;
 using namespace usim;
@@ -111,6 +114,110 @@ namespace Fem {
         
         return qp;
 
+    }
+
+    // -------------------------------------------------------------------------
+    // Algorithme Reverse Cuthill-McKee (RCM) pour réduire la largeur de bande
+    // -------------------------------------------------------------------------
+
+    void reorder_mesh_rcm(MeshP2& mesh) {
+        int n = mesh.nodes.size();
+        if (n == 0) return;
+
+        // 1. Construction du graphe d'adjacence
+        vector<set<int>> adj(n);
+        for(const auto& tri : mesh.triangles) {
+            for(int i=0; i<6; ++i) {
+                for(int j=i+1; j<6; ++j) {
+                    int u = tri.node_ids[i];
+                    int v = tri.node_ids[j];
+                    adj[u].insert(v);
+                    adj[v].insert(u);
+                }
+            }
+        }
+
+        // 2. Recherche d'un noeud de départ pseudo-périphérique
+        // Heuristique : noeud de degré min, puis BFS pour trouver le plus éloigné
+        int start_node = 0;
+        size_t min_deg = n + 1;
+        for(int i=0; i<n; ++i) {
+            if(adj[i].size() < min_deg) {
+                min_deg = adj[i].size();
+                start_node = i;
+            }
+        }
+
+        auto get_farthest = [&](int start) {
+            queue<int> q; q.push(start);
+            vector<int> dist(n, -1); dist[start] = 0;
+            int farthest = start;
+            while(!q.empty()) {
+                int u = q.front(); q.pop();
+                if(dist[u] > dist[farthest]) farthest = u;
+                for(int v : adj[u]) {
+                    if(dist[v] == -1) { dist[v] = dist[u] + 1; q.push(v); }
+                }
+            }
+            return farthest;
+        };
+
+        int P = get_farthest(start_node);
+        int Q = get_farthest(P);
+        start_node = Q;
+
+        // 3. Parcours Cuthill-McKee
+        vector<int> perm; perm.reserve(n);
+        vector<bool> visited(n, false);
+
+        for(int i=0; i<n; ++i) {
+            // Gestion des composantes connexes (si le maillage est en plusieurs morceaux)
+            int root = (i == 0) ? start_node : i;
+            if(visited[root]) continue;
+
+            queue<int> q;
+            q.push(root);
+            visited[root] = true;
+            perm.push_back(root);
+
+            while(!q.empty()) {
+                int u = q.front(); q.pop();
+
+                // Récupérer les voisins non visités
+                vector<int> neighbors;
+                for(int v : adj[u]) {
+                    if(!visited[v]) neighbors.push_back(v);
+                }
+                // Trier par degré croissant
+                std::sort(neighbors.begin(), neighbors.end(), [&](int a, int b){
+                    return adj[a].size() < adj[b].size();
+                });
+
+                for(int v : neighbors) {
+                    visited[v] = true;
+                    perm.push_back(v);
+                    q.push(v);
+                }
+            }
+        }
+
+        // 4. Reverse (RCM)
+        std::reverse(perm.begin(), perm.end());
+
+        // 5. Application de la permutation au maillage
+        vector<int> old_to_new(n);
+        vector<Point2D> new_nodes(n);
+        for(int i=0; i<n; ++i) {
+            int old_id = perm[i];
+            old_to_new[old_id] = i;
+            new_nodes[i] = mesh.nodes[old_id];
+            new_nodes[i].id = i;
+        }
+        mesh.nodes = std::move(new_nodes);
+        for(auto& tri : mesh.triangles) {
+            for(int k=0; k<6; ++k) tri.node_ids[k] = old_to_new[tri.node_ids[k]];
+        }
+        printf("RCM reordering applied.\n");
     }
 
     // -------------------------------------------------------------------------

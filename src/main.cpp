@@ -209,6 +209,10 @@ int main(int argc, char** argv) {
     printf("--- Initialisation FEM ---\n");
     MeshP2 mesh;
     mesh.read_msh_v2_ascii(argv[1], {TAG_DEFECT});
+    
+    // OPTIMISATION : Renumérotation RCM pour réduire la largeur de bande
+    Fem::reorder_mesh_rcm(mesh);
+
     mesh.write_matlab_mesh_m("mesh_out.m");
     //mesh.write_defect_coords_txt("defect_coords.txt"); si python
 
