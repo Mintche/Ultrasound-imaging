@@ -17,11 +17,11 @@
 
 
 void compute_for_k(MeshP2 mesh,double k0, double kd, double h, double L, int tag_left, int tag_right, double x_source_gauche, double x_source_droite, double epsilon,
-                                     int grid_nx, int grid_ny, vector<double>& indicators, double percentage, double noise_level) {
-    int N_MODES = floor(h * min(k0,kd) / M_PI) + 5; 
+                                     int grid_nx, int grid_ny, std::vector<double>& indicators, double percentage, double noise_level) {
+    int N_MODES = floor(h * std::min(k0,kd) / M_PI) + 5; 
     printf("Calcul pour k0 = %f (f = %f Hz) | N_modes = %d\n", k0, k0*C/(2*M_PI), N_MODES);                                    
     // Calcul du profil et matrices
-    vector<size_t> profile = Fem::compute_profile_enhanced(mesh, {tag_left, tag_right});
+    std::vector<size_t> profile = Fem::compute_profile_enhanced(mesh, {tag_left, tag_right});
     ProfileMatrix<complexe> K(profile);
 
     Fem::A_matrix(mesh, K, 1.0);                 // Matrice de Raideur
@@ -52,14 +52,14 @@ void compute_for_k(MeshP2 mesh,double k0, double kd, double h, double L, int tag
     FullMatrix<complexe> S_LR(N_MODES, N_MODES); // Mesure Gauche, Source Droite
     FullMatrix<complexe> S_RR(N_MODES, N_MODES); // Mesure Droite, Source Droite
 
-    vector<complexe> U(mesh.ndof());
-    vector<complexe> u_s(mesh.ndof());
-    vector<complexe> proj_plus(N_MODES), proj_minus(N_MODES);
+    std::vector<complexe> U(mesh.ndof());
+    std::vector<complexe> u_s(mesh.ndof());
+    std::vector<complexe> proj_plus(N_MODES), proj_minus(N_MODES);
 
     // --- Cas 1 : Ondes incidentes depuis la Gauche (Source Plus / u_n^+) ---
     // Correspond aux colonnes de droite de F (F+-) et (F--)
     for (int n = 0; n < N_MODES; ++n) {
-        vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, n, k0, x_source_gauche, 1.0);
+        std::vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, n, k0, x_source_gauche, 1.0);
         K.solve(U, G); 
 
         // Extraction champ diffracté (incident depuis gauche -> direction = 1.0)
@@ -78,7 +78,7 @@ void compute_for_k(MeshP2 mesh,double k0, double kd, double h, double L, int tag
     // --- Cas 2 : Ondes incidentes depuis la Droite (Source Minus / u_n^-) ---
     // Correspond aux colonnes de gauche de F (F++) et (F-+)
     for (int n = 0; n < N_MODES; ++n) {
-        vector<complexe> G = Fem::assemble_source_vector(mesh, E_plus, n, k0, x_source_droite, -1.0); 
+        std::vector<complexe> G = Fem::assemble_source_vector(mesh, E_plus, n, k0, x_source_droite, -1.0); 
         K.solve(U, G);
 
         // Extraction champ diffracté (incident depuis droite -> direction = -1.0)
@@ -106,7 +106,7 @@ void compute_for_k(MeshP2 mesh,double k0, double kd, double h, double L, int tag
     FullMatrix<complexe> F_adj = F.adjoint();
     FullMatrix<complexe> I(2*N_MODES,2*N_MODES);
     for (int i = 0; i < 2*N_MODES;i++) I(i,i) = 1.0;
-    FullMatrix<complexe> M = F_adj * F + complex(EPSILON,0.0)*I;
+    FullMatrix<complexe> M = F_adj * F + std::complex(EPSILON,0.0)*I;
 
     M.factorize();
 
@@ -127,14 +127,14 @@ void compute_for_k(MeshP2 mesh,double k0, double kd, double h, double L, int tag
     for(int i = 0; i < grid_nx; ++i) {
         for(int j = 0; j < grid_ny; ++j) {
                 // Chaque thread a ses propres vecteurs de travail
-                vector<complexe> H_z(2*N_MODES);
-                vector<complexe> F_adj_G(2*N_MODES);
+                std::vector<complexe> H_z(2*N_MODES);
+                std::vector<complexe> F_adj_G(2*N_MODES);
 
                 double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
                 double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
 
                 // 1. Calcul du second membre G_z
-                vector<complexe> G_z = LinearSampling::assemble_Gz(mesh, N_MODES, z1, z2 - mesh.ymin, mesh.xmin, mesh.xmax, k0, h);
+                std::vector<complexe> G_z = LinearSampling::assemble_Gz(mesh, N_MODES, z1, z2 - mesh.ymin, mesh.xmin, mesh.xmax, k0, h);
 
                 // 2. Calcul du RHS : F* G_z
                 F_adj_G = F_adj * G_z;
@@ -150,11 +150,11 @@ void compute_for_k(MeshP2 mesh,double k0, double kd, double h, double L, int tag
 
  }
 
-void compute_average_image(MeshP2 mesh, int num_k_points, vector<double> &k_values, vector<double> &kd_values, double h, double L, int tag_left, int tag_right, double x_source_gauche, double x_source_droite, double epsilon,
+void compute_average_image(MeshP2 mesh, int num_k_points, std::vector<double> &k_values, std::vector<double> &kd_values, double h, double L, int tag_left, int tag_right, double x_source_gauche, double x_source_droite, double epsilon,
                                      int grid_nx, int grid_ny,double percentage, double noise_level) {
 
     // Buffer pour stocker les images intermédiaires
-    vector<vector<double>> all_indicators(num_k_points, vector<double>(grid_nx * grid_ny));
+    std::vector<std::vector<double>> all_indicators(num_k_points, std::vector<double>(grid_nx * grid_ny));
 
     // Boucle sur les différentes fréquences
     for (int idx = 0; idx < num_k_points; ++idx) {
@@ -170,7 +170,7 @@ void compute_average_image(MeshP2 mesh, int num_k_points, vector<double> &k_valu
 
 
     // Moyenne des images intermédiaires
-    vector<double> average_indicators(grid_nx * grid_ny, 0.0);
+    std::vector<double> average_indicators(grid_nx * grid_ny, 0.0);
     for (int i = 0; i < grid_nx * grid_ny; ++i) {
         double sum = 0.0;
         for (int idx = 0; idx < num_k_points; ++idx) {
@@ -184,7 +184,7 @@ void compute_average_image(MeshP2 mesh, int num_k_points, vector<double> &k_valu
     double y_scan_min = mesh.ymin + 0.05; double y_scan_max = mesh.ymax - 0.05;
 
     //Ecriture finale de l'image moyenne
-    ofstream file("average_image_lsm.txt");
+    std::ofstream file("average_image_lsm.txt");
     file << grid_nx << " " << grid_ny << "\n";
     for(int i = 0; i < grid_nx; ++i) {
         double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
@@ -234,8 +234,8 @@ int main(int argc, char** argv) {
 
     double h_mesh = mesh.compute_h_max(); 
     double lambda_min = h_mesh/6.0; 
-    vector<double> kd_values(num_k_points);
-    vector<double> k_values(num_k_points);
+    std::vector<double> kd_values(num_k_points);
+    std::vector<double> k_values(num_k_points);
     double cmin = (C < C_D) ? C : C_D;
     for (int i = 0; i < num_k_points; ++i) {
         double f = (i + 1) * (cmin/lambda_min*num_k_points) ; // f = c/lambda

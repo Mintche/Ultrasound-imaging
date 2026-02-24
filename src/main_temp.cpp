@@ -1,5 +1,5 @@
 #include "fem.hpp"
-#include "linear_sampling.hpp" // Ta classe développée précédemment
+#include "linear_sampling.hpp"
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -28,6 +28,10 @@ int main(int argc, char** argv) {
     printf("--- Initialisation FEM ---\n");
     MeshP2 mesh;
     mesh.read_msh_v2_ascii(argv[1], {TAG_DEFECT});
+    
+    // OPTIMISATION : Renumérotation RCM pour réduire la largeur de bande
+    Fem::reorder_mesh_rcm(mesh);
+
     mesh.write_matlab_mesh_m("mesh_out.m");
     //mesh.write_defect_coords_txt("defect_coords.txt"); si python
 
@@ -43,10 +47,10 @@ int main(int argc, char** argv) {
     printf("H = %f | L = %f | Ndof : %zu\n", h, L, mesh.ndof());
 
     //Calcul de N_MODES (nombre de modes de guide d'ondes) : on prend tous les modes propagatifs + quelques modes évanescents pour la précision
-    int N_MODES = floor(h * min(k0,kd) / M_PI) + 5; 
+    int N_MODES = floor(h * std::min(k0,kd) / M_PI) + 5; 
 
     // Calcul du profil et matrices
-    vector<size_t> profile = Fem::compute_profile_enhanced(mesh, {tag_left, tag_right});
+    std::vector<size_t> profile = Fem::compute_profile_enhanced(mesh, {tag_left, tag_right});
     ProfileMatrix<complexe> K(profile);
 
     Fem::A_matrix(mesh, K, 1.0);                 // Matrice de Raideur
@@ -77,14 +81,14 @@ int main(int argc, char** argv) {
     FullMatrix<complexe> S_LR(N_MODES, N_MODES); // Mesure Gauche, Source Droite
     FullMatrix<complexe> S_RR(N_MODES, N_MODES); // Mesure Droite, Source Droite
 
-    vector<complexe> U(mesh.ndof());
-    vector<complexe> u_s(mesh.ndof());
-    vector<complexe> proj_plus(N_MODES), proj_minus(N_MODES);
+    std::vector<complexe> U(mesh.ndof());
+    std::vector<complexe> u_s(mesh.ndof());
+    std::vector<complexe> proj_plus(N_MODES), proj_minus(N_MODES);
 
     // --- Cas 1 : Ondes incidentes depuis la Gauche (Source Plus / u_n^+) ---
     // Correspond aux colonnes de droite de F (F+-) et (F--)
     for (int n = 0; n < N_MODES; ++n) {
-        vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, n, k0, x_source_gauche, 1.0);
+        std::vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, n, k0, x_source_gauche, 1.0);
         K.solve(U, G); 
 
         // Extraction champ diffracté (incident depuis gauche -> direction = 1.0)
@@ -103,7 +107,7 @@ int main(int argc, char** argv) {
     // --- Cas 2 : Ondes incidentes depuis la Droite (Source Minus / u_n^-) ---
     // Correspond aux colonnes de gauche de F (F++) et (F-+)
     for (int n = 0; n < N_MODES; ++n) {
-        vector<complexe> G = Fem::assemble_source_vector(mesh, E_plus, n, k0, x_source_droite, -1.0); 
+        std::vector<complexe> G = Fem::assemble_source_vector(mesh, E_plus, n, k0, x_source_droite, -1.0); 
         K.solve(U, G);
 
         // Extraction champ diffracté (incident depuis droite -> direction = -1.0)
@@ -131,7 +135,7 @@ int main(int argc, char** argv) {
     FullMatrix<complexe> F_adj = F.adjoint();
     FullMatrix<complexe> I(2*N_MODES,2*N_MODES);
     for (int i = 0; i < 2*N_MODES;i++) I(i,i) = 1.0;
-    FullMatrix<complexe> M = F_adj * F + complex(EPSILON,0.0)*I;
+    FullMatrix<complexe> M = F_adj * F + std::complex(EPSILON,0.0)*I;
 
     M.factorize();
 
@@ -155,14 +159,14 @@ int main(int argc, char** argv) {
     for(int i = 0; i < grid_nx; ++i) {
         for(int j = 0; j < grid_ny; ++j) {
                 // Chaque thread a ses propres vecteurs de travail
-                vector<complexe> H_z(2*N_MODES);
-                vector<complexe> F_adj_G(2*N_MODES);
+                std::vector<complexe> H_z(2*N_MODES);
+                std::vector<complexe> F_adj_G(2*N_MODES);
 
                 double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
                 double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
 
                 // 1. Calcul du second membre G_z
-                vector<complexe> G_z = LinearSampling::assemble_Gz(mesh, N_MODES, z1, z2 - mesh.ymin, mesh.xmin, mesh.xmax, k0, h);
+                std::vector<complexe> G_z = LinearSampling::assemble_Gz(mesh, N_MODES, z1, z2 - mesh.ymin, mesh.xmin, mesh.xmax, k0, h);
 
                 // 2. Calcul du RHS : F* G_z
                 F_adj_G = F_adj * G_z;
@@ -177,7 +181,7 @@ int main(int argc, char** argv) {
         }
 
     // Écriture finale
-    ofstream file("image_lsm.txt");
+    std::ofstream file("image_lsm.txt");
     file << grid_nx << " " << grid_ny << "\n";
     for(int i = 0; i < grid_nx; ++i) {
         double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
