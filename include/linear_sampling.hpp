@@ -72,6 +72,21 @@ namespace LinearSampling {
     void compute_lsm_average(const MeshP2& mesh, int n_freq, double base_k0, double contrast_ratio,
                              double noise_percentage, int grid_nx, int grid_ny,
                              int tag_left, int tag_right, const std::string& output_filename);
+                             
+    // -------------------------------------------------------------------------
+    // Interface Physique (Fréquence Hz, Vitesse m/s) avec vérification maillage
+    // -------------------------------------------------------------------------
+
+    struct PhysicalParameters {
+        double c0;          // Vitesse du son dans le milieu sain (m/s)
+        double freq_start;  // Fréquence de début (Hz)
+        double freq_step;   // Pas de fréquence (Hz)
+        int n_freq;         // Nombre de fréquences
+    };
+
+    void compute_lsm_physical(const MeshP2& mesh, PhysicalParameters phys_params, double contrast_ratio,
+                              double noise_percentage, int grid_nx, int grid_ny,
+                              int tag_left, int tag_right, const std::string& output_filename);
 
 };
 

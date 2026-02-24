@@ -248,6 +248,21 @@ std::vector<std::size_t> compute_profile_enhanced(const MeshP2& mesh, const std:
     return p;
 }
 
+double get_max_edge_length(const MeshP2& mesh) {
+    double h_max = 0.0;
+    for (const auto& tri : mesh.triangles) {
+        // On vérifie les 3 arêtes principales du triangle (sommets 0-1, 1-2, 2-0)
+        int vertices[3] = {tri.node_ids[0], tri.node_ids[1], tri.node_ids[2]};
+        for (int i = 0; i < 3; ++i) {
+            Point2D p1 = mesh.nodes[vertices[i]];
+            Point2D p2 = mesh.nodes[vertices[(i + 1) % 3]];
+            double dist = std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2));
+            if (dist > h_max) h_max = dist;
+        }
+    }
+    return h_max;
+}
+
 void A_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& A, double factor){
     std::vector<QuadraturePoint> qp = get_quadrature_points();
 

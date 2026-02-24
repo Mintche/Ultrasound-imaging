@@ -5,12 +5,11 @@
 #include <vector>
 #include <string>
 
-// Paramètres physiques fixes (basés sur main_temp.cpp pour préserver la qualité de visualisation)
 #define TAG_LEFT 11
 #define TAG_RIGHT 12
 #define TAG_DEFECT 2
 #define BASE_K0 30.0
-#define CONTRAST_RATIO 3.0 // kd = k0 * 3
+#define CONTRAST_RATIO 3.0
 
 int main(int argc, char** argv) {
 
@@ -45,18 +44,21 @@ int main(int argc, char** argv) {
     mesh.write_matlab_mesh_m("mesh_out.m");
 
     printf("Maillage charge : %zu noeuds, %zu triangles.\n", mesh.nodes.size(), mesh.triangles.size());
-    printf("Parametres : Bruit = %.1f%%, Moyenne sur %d frequence(s).\n", noise_percentage, n_freq);
+    printf("Parametres : Bruit = %.1f%%, Moyenne sur %d frequence(s).\n", 100*noise_percentage, n_freq);
 
     // -------------------------------------------------------------------------
     // CALCUL LSM
     // -------------------------------------------------------------------------
+
+    LinearSampling::PhysicalParameters phys_params = {340, 15*1e2, 2*1e1, n_freq}; //c0 freq start frestep n_freq
     
-    // Paramètres de la grille d'imagerie (identiques à main_temp)
+    // Paramètres de la grille d'imagerie
     int grid_nx = 100;
     int grid_ny = 50;
 
-    LinearSampling::compute_lsm_average(mesh, n_freq, BASE_K0, CONTRAST_RATIO, noise_percentage, 
-                                        grid_nx, grid_ny, TAG_LEFT, TAG_RIGHT, "image_lsm.txt");
+    //LinearSampling::compute_lsm_average(mesh, n_freq, BASE_K0, CONTRAST_RATIO, noise_percentage, grid_nx, grid_ny, TAG_LEFT, TAG_RIGHT, "image_lsm.txt");
+
+    LinearSampling::compute_lsm_physical(mesh,phys_params,5,noise_percentage, grid_nx, grid_ny, TAG_LEFT, TAG_RIGHT, "image_lsm.txt");
 
     return 0;
 }

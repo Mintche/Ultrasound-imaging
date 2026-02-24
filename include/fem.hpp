@@ -54,6 +54,12 @@ namespace Fem {
     std::vector<std::size_t> compute_profile_enhanced(const MeshP2& mesh, const std::vector<int>& boundary_tags);
 
     // -------------------------------------------------------------------------
+    // Analyse géométrique du maillage
+    // -------------------------------------------------------------------------
+
+    double get_max_edge_length(const MeshP2& mesh);
+
+    // -------------------------------------------------------------------------
     // Assemblage de la Matrice de Rigidité A
     // -------------------------------------------------------------------------
 

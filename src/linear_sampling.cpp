@@ -245,4 +245,75 @@ void compute_lsm_average(const MeshP2& mesh, int n_freq, double base_k0, double 
     printf("Resultats ecrits dans '%s'.\n", output_filename.c_str());
 }
 
+void compute_lsm_physical(const MeshP2& mesh, PhysicalParameters phys_params, double contrast_ratio,
+                          double noise_percentage, int grid_nx, int grid_ny,
+                          int tag_left, int tag_right, const std::string& output_filename) {
+
+    // 1. Analyse du maillage
+    double h_max = Fem::get_max_edge_length(mesh);
+    printf("--- Verification du maillage ---\n");
+    printf("Pas maximum du maillage (h_max) : %.4f m\n", h_max);
+
+    // 2. Vérification pour la fréquence maximale
+    double freq_max = phys_params.freq_start + (phys_params.n_freq - 1) * phys_params.freq_step;
+    double lambda_min = phys_params.c0 / freq_max;
+    
+    // Critère P2 : On recommande h < lambda / 3 (environ 6 noeuds par longueur d'onde)
+    // Le noeud milieu aide, donc h correspond à 2 intervalles nodaux.
+    double points_per_wavelength = lambda_min / (h_max / 2.0);
+
+    printf("Frequence max : %.2f Hz => Longueur d'onde min : %.4f m\n", freq_max, lambda_min);
+    printf("Points par longueur d'onde (approx) : %.2f\n", points_per_wavelength);
+
+    if (points_per_wavelength < 6.0) {
+        printf("\n[ATTENTION] Le maillage est trop grossier pour la frequence demandee !\n");
+        printf("Conseil : Reduire h_max en dessous de %.4f m ou baisser la frequence.\n\n", lambda_min / 3.0);
+        throw std::runtime_error("Maillage inadapte pour la frequence.");
+    } else {
+        printf("[OK] Resolution du maillage suffisante.\n\n");
+    }
+
+    // 3. Conversion et appel de la fonction générique
+    // k = 2*pi*f / c0
+
+    double h = mesh.Ly;
+    double noise_level = (noise_percentage <= 0) ? -1 : noise_percentage * (1.0/sqrt(2.0*h));
+    
+    double x_scan_min = mesh.xmin + 0.05; double x_scan_max = mesh.xmax - 0.05;
+    double y_scan_min = mesh.ymin + 0.05; double y_scan_max = mesh.ymax - 0.05;
+
+    std::vector<double> avg_indicators(grid_nx * grid_ny, 0.0);
+    std::vector<double> current_indicators;
+
+    for(int i = 0; i < phys_params.n_freq; ++i) {
+        double f = phys_params.freq_start + i * phys_params.freq_step;
+        double k0 = 2.0 * M_PI * f / phys_params.c0;
+        double kd = k0 * contrast_ratio;
+        
+        printf("Simulation Freq=%.1f Hz (k0=%.2f) ...\n", f, k0);
+
+        compute_lsm_single_freq(mesh, k0, kd, noise_level, grid_nx, grid_ny, 
+                                x_scan_min, x_scan_max, y_scan_min, y_scan_max, 
+                                tag_left, tag_right, current_indicators);
+
+        double max_val = normesup(current_indicators);
+        for(size_t k=0; k<avg_indicators.size(); ++k) {
+            avg_indicators[k] += (current_indicators[k] / max_val);
+        }
+    }
+
+    // Ecriture fichier
+    std::ofstream file(output_filename);
+    file << grid_nx << " " << grid_ny << "\n";
+    for(int i = 0; i < grid_nx; ++i) {
+        double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
+        for(int j = 0; j < grid_ny; ++j) {
+            double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
+            file << z1 << " " << z2 << " " << (avg_indicators[i * grid_ny + j] / phys_params.n_freq) << "\n";
+        }
+    }
+    file.close();
+    printf("Resultats (Physique) ecrits dans '%s'.\n", output_filename.c_str());
+}
+
 } // namespace LinearSampling
