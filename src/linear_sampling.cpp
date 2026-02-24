@@ -4,7 +4,7 @@ namespace LinearSampling {
     
 #define EPSILON_LSM 1e-6 // Paramètre de régularisation Tikhonov
 
-void compute_boundary_u_s(const MeshP2& mesh, int n_mode,int tag_left,int tag_right, 
+void compute_boundary_u_s(const usim::MeshP2& mesh, int n_mode,int tag_left,int tag_right, 
                         double direction, [[maybe_unused]] double L, double k0, double h, 
                         std::vector<complexe>& u_s, const std::vector<complexe>& u_n) {
 
@@ -78,7 +78,7 @@ FullMatrix<complexe> compute_F_pp(const FullMatrix<complexe>& S_m_p, int N_modes
     return F_pp;
 }
 
-std::vector<complexe> assemble_Gz([[maybe_unused]] const MeshP2& mesh, int n_modes, double z1, double z2,
+std::vector<complexe> assemble_Gz([[maybe_unused]] const usim::MeshP2& mesh, int n_modes, double z1, double z2,
                                     double x_min, double x_max, double k0, double h){
     
     std::vector<complexe> Gz(2*n_modes);
@@ -107,7 +107,7 @@ void add_gaussian_noise(std::vector<complexe>& data, double noise_level) {
     }
 }
 
-void compute_lsm_single_freq(const MeshP2& mesh, double k0, double kd, double noise_level,
+void compute_lsm_single_freq(const usim::MeshP2& mesh, double k0, double kd, double noise_level,
                              int grid_nx, int grid_ny, 
                              double x_scan_min, double x_scan_max, double y_scan_min, double y_scan_max,
                              int tag_left, int tag_right, std::vector<double>& indicators) {
@@ -204,7 +204,7 @@ void compute_lsm_single_freq(const MeshP2& mesh, double k0, double kd, double no
     }
 }
 
-void compute_lsm_average(const MeshP2& mesh, int n_freq, double base_k0, double contrast_ratio,
+void compute_lsm_average(const usim::MeshP2& mesh, int n_freq, double base_k0, double contrast_ratio,
                          double noise_percentage, int grid_nx, int grid_ny,
                          int tag_left, int tag_right, const std::string& output_filename) {
 
@@ -245,7 +245,7 @@ void compute_lsm_average(const MeshP2& mesh, int n_freq, double base_k0, double 
     printf("Resultats ecrits dans '%s'.\n", output_filename.c_str());
 }
 
-void compute_lsm_physical(const MeshP2& mesh, PhysicalParameters phys_params, double contrast_ratio,
+void compute_lsm_physical(const usim::MeshP2& mesh, PhysicalParameters phys_params, double contrast_ratio,
                           double noise_percentage, int grid_nx, int grid_ny,
                           int tag_left, int tag_right, const std::string& output_filename) {
 

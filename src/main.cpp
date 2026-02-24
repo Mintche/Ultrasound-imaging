@@ -5,17 +5,17 @@
 #include <vector>
 #include <string>
 
-#define TAG_LEFT 11
-#define TAG_RIGHT 12
-#define TAG_DEFECT 2
-#define BASE_K0 30.0
-#define CONTRAST_RATIO 3.0
+constexpr int TAG_LEFT = 11;
+constexpr int TAG_RIGHT = 12;
+constexpr int TAG_DEFECT = 2;
+constexpr double BASE_K0 = 30.0;
+constexpr double CONTRAST_RATIO = 3.0;
 
 int main(int argc, char** argv) {
 
     if(argc < 4){
-        printf("Usage: %s <mesh.msh> <noise percentage> <n_frequencies>\n", argv[0]);
-        printf("Exemple: %s mesh.msh 5 3\n", argv[0]);
+        std::cout << "Usage: "<< argv[0]<< "<mesh.msh> <noise percentage> <n_frequencies> "<< std::endl;
+        std::cout <<"Exemple: "<< argv[0]<< " mesh.msh 5 3"<< std::endl;
         return 1;
     }
 
@@ -28,8 +28,8 @@ int main(int argc, char** argv) {
     // -------------------------------------------------------------------------
     // INITIALISATION FEM
     // -------------------------------------------------------------------------
-    printf("--- Initialisation FEM ---\n");
-    MeshP2 mesh;
+    std::cout << "--- Initialisation FEM ---\n";
+    usim::MeshP2 mesh;
     try {
         mesh.read_msh_v2_ascii(mesh_file, {TAG_DEFECT});
     } catch (const std::exception& e) {
@@ -43,8 +43,8 @@ int main(int argc, char** argv) {
     // Export pour vérification Matlab
     mesh.write_matlab_mesh_m("mesh_out.m");
 
-    printf("Maillage charge : %zu noeuds, %zu triangles.\n", mesh.nodes.size(), mesh.triangles.size());
-    printf("Parametres : Bruit = %.1f%%, Moyenne sur %d frequence(s).\n", 100*noise_percentage, n_freq);
+    std::cout << "Maillage charge : " <<  mesh.nodes.size() <<  " noeuds, " << mesh.nodes.size() << " triangles." <<std::endl;
+    std::cout << "Parametres : Bruit = " << 100*noise_percentage<< " Moyenne sur " << n_freq << "frequence(s)";
 
     // -------------------------------------------------------------------------
     // CALCUL LSM

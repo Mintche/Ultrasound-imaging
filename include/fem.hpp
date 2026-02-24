@@ -12,8 +12,6 @@
 #include <map>
 #include <cstdio>
 
-using namespace usim;
-
 // Structure pour stocker un point d'intégration (Gauss)
 struct QuadraturePoint {
     double x, y; // Coordonnées sur le triangle de référence
@@ -43,33 +41,33 @@ namespace Fem {
     // Algorithme Reverse Cuthill-McKee (RCM) pour réduire la largeur de bande
     // -------------------------------------------------------------------------
 
-    void reorder_mesh_rcm(MeshP2& mesh);
+    void reorder_mesh_rcm(usim::MeshP2& mesh);
 
     // -------------------------------------------------------------------------
     // Calcul du profil de la matrice
     // -------------------------------------------------------------------------
 
-    std::vector<std::size_t> compute_profile(const MeshP2& mesh);
+    std::vector<std::size_t> compute_profile(const usim::MeshP2& mesh);
 
-    std::vector<std::size_t> compute_profile_enhanced(const MeshP2& mesh, const std::vector<int>& boundary_tags);
+    std::vector<std::size_t> compute_profile_enhanced(const usim::MeshP2& mesh, const std::vector<int>& boundary_tags);
 
     // -------------------------------------------------------------------------
     // Analyse géométrique du maillage
     // -------------------------------------------------------------------------
 
-    double get_max_edge_length(const MeshP2& mesh);
+    double get_max_edge_length(const usim::MeshP2& mesh);
 
     // -------------------------------------------------------------------------
     // Assemblage de la Matrice de Rigidité A
     // -------------------------------------------------------------------------
 
-    void A_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& A, double factor = 1.0);
+    void A_matrix(const usim::MeshP2& mesh, ProfileMatrix<complexe>& A, double factor = 1.0);
 
     // -------------------------------------------------------------------------
     // Assemblage de la Matrice de Masse B
     // -------------------------------------------------------------------------
 
-    void B_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& B, double k0, double k_d_val, double factor = -1.0);
+    void B_matrix(const usim::MeshP2& mesh, ProfileMatrix<complexe>& B, double k0, double k_d_val, double factor = -1.0);
 
     // -------------------------------------------------------------------------
     // Quadrature 1D (Gauss-Legendre) pour les bords
@@ -81,7 +79,6 @@ namespace Fem {
     // Fonctions de forme 1D P2 sur [-1, 1] et calcul de c_n
     // -------------------------------------------------------------------------
 
-    // phi[0] : t=-1 (gauche), phi[1] : t=1 (droite), phi[2] : t=0 (milieu)
     void evaluate_shape_functions_1d(double t, std::vector<double>& phi);
 
     double evaluate_c_1d(double y, double h, int n);
@@ -96,7 +93,7 @@ namespace Fem {
     // Assemblage matrice E
     // -------------------------------------------------------------------------
 
-    FullMatrix<complexe> compute_E(const MeshP2& mesh, int N_modes, int boundary_tag, double k0);
+    FullMatrix<complexe> compute_E(const usim::MeshP2& mesh, int N_modes, int boundary_tag, double k0);
 
     // -------------------------------------------------------------------------
     // Assemblage matrice D
@@ -114,7 +111,7 @@ namespace Fem {
     // Assemblage vecteur G
     // -------------------------------------------------------------------------
 
-    std::vector<complexe> assemble_source_vector(const MeshP2& mesh, const FullMatrix<complexe>& E,int n_inc, double k0, double L, double coef);
+    std::vector<complexe> assemble_source_vector(const usim::MeshP2& mesh, const FullMatrix<complexe>& E,int n_inc, double k0, double L, double coef);
 };
 
 #endif

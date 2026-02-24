@@ -6,14 +6,16 @@ test/*.msh
 
 *.x
 
-*.txt
+image_lsm.txt
 
 mesh_out.m
-
-solution_out.m
 
 .venv
 
 plot_lsm.py
 
 *.png
+
+run_sol.m
+
+data/*.fig

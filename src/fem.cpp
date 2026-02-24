@@ -86,7 +86,7 @@ std::vector<QuadraturePoint> get_quadrature_points() {
 
 }
 
-void reorder_mesh_rcm(MeshP2& mesh) {
+void reorder_mesh_rcm(usim::MeshP2& mesh) {
     int n = mesh.nodes.size();
     if (n == 0) return;
 
@@ -172,7 +172,7 @@ void reorder_mesh_rcm(MeshP2& mesh) {
 
     // 5. Application de la permutation au maillage
     std::vector<int> old_to_new(n);
-    std::vector<Point2D> new_nodes(n);
+    std::vector<usim::Point2D> new_nodes(n);
     for(int i=0; i<n; ++i) {
         int old_id = perm[i];
         old_to_new[old_id] = i;
@@ -186,7 +186,7 @@ void reorder_mesh_rcm(MeshP2& mesh) {
     std::printf("RCM reordering applied.\n");
 }
 
-    std::vector<std::size_t> compute_profile(const MeshP2& mesh){
+    std::vector<std::size_t> compute_profile(const usim::MeshP2& mesh){
         std::size_t ndof = mesh.ndof();
         std::vector<std::size_t> p(ndof);
         
@@ -209,7 +209,7 @@ void reorder_mesh_rcm(MeshP2& mesh) {
         return p;
     }
 
-std::vector<std::size_t> compute_profile_enhanced(const MeshP2& mesh, const std::vector<int>& boundary_tags){
+std::vector<std::size_t> compute_profile_enhanced(const usim::MeshP2& mesh, const std::vector<int>& boundary_tags){
 
     // 1. Profil standard basé sur les triangles
     std::vector<std::size_t> p = compute_profile(mesh);
@@ -248,14 +248,14 @@ std::vector<std::size_t> compute_profile_enhanced(const MeshP2& mesh, const std:
     return p;
 }
 
-double get_max_edge_length(const MeshP2& mesh) {
+double get_max_edge_length(const usim::MeshP2& mesh) {
     double h_max = 0.0;
     for (const auto& tri : mesh.triangles) {
         // On vérifie les 3 arêtes principales du triangle (sommets 0-1, 1-2, 2-0)
         int vertices[3] = {tri.node_ids[0], tri.node_ids[1], tri.node_ids[2]};
         for (int i = 0; i < 3; ++i) {
-            Point2D p1 = mesh.nodes[vertices[i]];
-            Point2D p2 = mesh.nodes[vertices[(i + 1) % 3]];
+            usim::Point2D p1 = mesh.nodes[vertices[i]];
+            usim::Point2D p2 = mesh.nodes[vertices[(i + 1) % 3]];
             double dist = std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2));
             if (dist > h_max) h_max = dist;
         }
@@ -263,15 +263,15 @@ double get_max_edge_length(const MeshP2& mesh) {
     return h_max;
 }
 
-void A_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& A, double factor){
+void A_matrix(const usim::MeshP2& mesh, ProfileMatrix<complexe>& A, double factor){
     std::vector<QuadraturePoint> qp = get_quadrature_points();
 
     FullMatrix<double> dphi_ref(6,2);
     for (const auto& tri : mesh.triangles) {
 
-        Point2D p0 = mesh.nodes[tri.node_ids[0]];
-        Point2D p1 = mesh.nodes[tri.node_ids[1]];
-        Point2D p2 = mesh.nodes[tri.node_ids[2]];
+        usim::Point2D p0 = mesh.nodes[tri.node_ids[0]];
+        usim::Point2D p1 = mesh.nodes[tri.node_ids[1]];
+        usim::Point2D p2 = mesh.nodes[tri.node_ids[2]];
 
         //Passage (Reference -> Réel) F(S) = Bl*S + bl avec bl = S0, Bl = [S1-S0,S2-S0]
 
@@ -306,7 +306,7 @@ void A_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& A, double factor){
     }
 }
 
-void B_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& B, double k0, double k_d_val, double factor){
+void B_matrix(const usim::MeshP2& mesh, ProfileMatrix<complexe>& B, double k0, double k_d_val, double factor){
     auto qp = get_quadrature_points();
     std::vector<double> phi(6);
 
@@ -314,9 +314,9 @@ void B_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& B, double k0, double 
 
         // Coordonnées des 3 sommets du triangle (p0, p1, p2)
 
-        Point2D p0 = mesh.nodes[tri.node_ids[0]];
-        Point2D p1 = mesh.nodes[tri.node_ids[1]];
-        Point2D p2 = mesh.nodes[tri.node_ids[2]];
+        usim::Point2D p0 = mesh.nodes[tri.node_ids[0]];
+        usim::Point2D p1 = mesh.nodes[tri.node_ids[1]];
+        usim::Point2D p2 = mesh.nodes[tri.node_ids[2]];
 
         // detJ (Jacobien géométrique)
         double detJac = (p1.x-p0.x)*(p2.y-p0.y)-(p1.y-p0.y)*(p2.x-p0.x);
@@ -375,7 +375,7 @@ complexe compute_beta(double k0, double h, int n){
     return std::sqrt(complexe(k0*k0 - (M_PI*n/h)*(M_PI*n/h), 0.0));
 }
 
-FullMatrix<complexe> compute_E(const MeshP2& mesh, int N_modes, int boundary_tag, [[maybe_unused]] double k0) {
+FullMatrix<complexe> compute_E(const usim::MeshP2& mesh, int N_modes, int boundary_tag, [[maybe_unused]] double k0) {
     
     int ndof = mesh.ndof();
     // E est une matrice (Ndof x N_modes)
@@ -405,8 +405,8 @@ FullMatrix<complexe> compute_E(const MeshP2& mesh, int N_modes, int boundary_tag
                 };
 
                 // Coordonnées physiques pour calculer la longueur (Jacobien)
-                Point2D A = mesh.nodes[nodes_global[0]];
-                Point2D B = mesh.nodes[nodes_global[1]];
+                usim::Point2D A = mesh.nodes[nodes_global[0]];
+                usim::Point2D B = mesh.nodes[nodes_global[1]];
                 
                 // Longueur de l'arête (segment vertical)
                 double edge_length = std::sqrt(std::pow(B.x - A.x, 2) + std::pow(B.y - A.y, 2));
@@ -481,7 +481,7 @@ void T_matrix(ProfileMatrix<complexe>& K, FullMatrix<complexe>& E, FullMatrix<co
     }
 }
 
-std::vector<complexe> assemble_source_vector(const MeshP2& mesh, const FullMatrix<complexe>& E,int n_inc, double k0, double L, double coef) {
+std::vector<complexe> assemble_source_vector(const usim::MeshP2& mesh, const FullMatrix<complexe>& E,int n_inc, double k0, double L, double coef) {
 
     int Ndof = mesh.ndof();
     std::vector<complexe> G(Ndof, 0.0);

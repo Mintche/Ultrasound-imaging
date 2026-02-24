@@ -18,7 +18,7 @@ namespace LinearSampling {
     // Calcul de la composante du champs diffracté sur un bord 
     // -------------------------------------------------------------------------
 
-    void compute_boundary_u_s(const MeshP2& mesh, int n_mode,int tag_left,int tag_right,
+    void compute_boundary_u_s(const usim::MeshP2& mesh, int n_mode,int tag_left,int tag_right,
                             double direction, double L, double k0, double h, std::vector<complexe>& u_s, 
                             const std::vector<complexe>& u_n);
 
@@ -50,7 +50,7 @@ namespace LinearSampling {
     // Calcul de G 
     // -------------------------------------------------------------------------
 
-    std::vector<complexe> assemble_Gz(const MeshP2& mesh, int n_modes, double z1, double z2, double x_min, double x_max, double k0, double h);
+    std::vector<complexe> assemble_Gz(const usim::MeshP2& mesh, int n_modes, double z1, double z2, double x_min, double x_max, double k0, double h);
 
     // -------------------------------------------------------------------------
     // Bruit Gaussien
@@ -63,13 +63,13 @@ namespace LinearSampling {
     // -------------------------------------------------------------------------
 
     // Calcul de l'indicateur LSM pour une fréquence donnée
-    void compute_lsm_single_freq(const MeshP2& mesh, double k0, double kd, double noise_level,
+    void compute_lsm_single_freq(const usim::MeshP2& mesh, double k0, double kd, double noise_level,
                                  int grid_nx, int grid_ny, 
                                  double x_scan_min, double x_scan_max, double y_scan_min, double y_scan_max,
                                  int tag_left, int tag_right, std::vector<double>& indicators);
 
     // Calcul moyenné sur plusieurs fréquences et écriture du fichier de sortie
-    void compute_lsm_average(const MeshP2& mesh, int n_freq, double base_k0, double contrast_ratio,
+    void compute_lsm_average(const usim::MeshP2& mesh, int n_freq, double base_k0, double contrast_ratio,
                              double noise_percentage, int grid_nx, int grid_ny,
                              int tag_left, int tag_right, const std::string& output_filename);
                              
@@ -84,7 +84,7 @@ namespace LinearSampling {
         int n_freq;         // Nombre de fréquences
     };
 
-    void compute_lsm_physical(const MeshP2& mesh, PhysicalParameters phys_params, double contrast_ratio,
+    void compute_lsm_physical(const usim::MeshP2& mesh, PhysicalParameters phys_params, double contrast_ratio,
                               double noise_percentage, int grid_nx, int grid_ny,
                               int tag_left, int tag_right, const std::string& output_filename);
 
