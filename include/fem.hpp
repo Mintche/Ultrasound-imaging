@@ -17,14 +17,13 @@ struct QuadraturePoint {
     double w;    // Poids associé
 };
 
-class Fem {
-public:
+namespace Fem {
     // -------------------------------------------------------------------------
     // Fonctions de base P2 (Shape Functions) sur le triangle de référence
     // -------------------------------------------------------------------------
 
     // Ordre des noeuds : 0,1,2 (sommets) puis 3,4,5 (milieux)
-    static void evaluate_shape_functions(double x, double y, vector<double>& phi) {
+    void evaluate_shape_functions(double x, double y, vector<double>& phi) {
 
         double lambda1 = 1.0 - x - y;
         double lambda2 = x;
@@ -43,7 +42,7 @@ public:
     // Gradients des fonctions de base
     // -------------------------------------------------------------------------
 
-    static void evaluate_gradients(double x, double y, FullMatrix<double>& grads) {
+    void evaluate_gradients(double x, double y, FullMatrix<double>& grads) {
 
         grads(0,0) = 4.0*x + 4.0*y - 3.0;
         grads(0,1) = 4.0*x + 4.0*y - 3.0;
@@ -68,7 +67,7 @@ public:
     // Quadrature de Gauss
     // -------------------------------------------------------------------------
 
-    static vector<QuadraturePoint> get_quadrature_points() {
+    vector<QuadraturePoint> get_quadrature_points() {
 
         double s0 = 1/3.;
         double s1 = (6-sqrt(15))/21.;
@@ -118,7 +117,7 @@ public:
     // Calcul du profil de la matrice
     // -------------------------------------------------------------------------
 
-    static vector<size_t> compute_profile(const MeshP2& mesh){
+    vector<size_t> compute_profile(const MeshP2& mesh){
         size_t ndof = mesh.ndof();
         vector<size_t> p(ndof);
         
@@ -141,7 +140,7 @@ public:
         return p;
     }
 
-    static vector<size_t> compute_profile_enhanced(const MeshP2& mesh, const vector<int>& boundary_tags){
+    vector<size_t> compute_profile_enhanced(const MeshP2& mesh, const vector<int>& boundary_tags){
         // 1. Profil standard basé sur les triangles
         vector<size_t> p = compute_profile(mesh);
 
@@ -183,7 +182,7 @@ public:
     // Assemblage de la Matrice de Rigidité A
     // -------------------------------------------------------------------------
 
-    static void A_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& A, double factor = 1.0){
+    void A_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& A, double factor = 1.0){
         vector<QuadraturePoint> qp = get_quadrature_points();
 
         FullMatrix<double> dphi_ref(6,2);
@@ -230,7 +229,7 @@ public:
     // Assemblage de la Matrice de Masse B
     // -------------------------------------------------------------------------
 
-    static void B_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& B, 
+    void B_matrix(const MeshP2& mesh, ProfileMatrix<complexe>& B, 
                               double k0, double k_d_val, double factor = -1.0){
         auto qp = get_quadrature_points();
         vector<double> phi(6);
@@ -273,7 +272,7 @@ public:
     // -------------------------------------------------------------------------
     // Quadrature 1D (Gauss-Legendre) pour les bords
     // -------------------------------------------------------------------------
-    static vector<QuadraturePoint> get_quadrature_points_1d(){
+    vector<QuadraturePoint> get_quadrature_points_1d(){
         vector<QuadraturePoint> qp(3);
         double sqrt35 = sqrt(3/5.);
         
@@ -288,13 +287,13 @@ public:
     // Fonctions de forme 1D P2 sur [-1, 1] et calcul de c_n
     // -------------------------------------------------------------------------
     // phi[0] : t=-1 (gauche), phi[1] : t=1 (droite), phi[2] : t=0 (milieu)
-    static void evaluate_shape_functions_1d(double t, vector<double>& phi){
+    void evaluate_shape_functions_1d(double t, vector<double>& phi){
         phi[0] = 0.5 * t * (t - 1.0); // Sommet gauche
         phi[1] = 0.5 * t * (t + 1.0); // Sommet droite
         phi[2] = 1.0 - t * t;         // Milieu
     }
 
-    static double evaluate_c_1d(double y, double h, int n){
+    double evaluate_c_1d(double y, double h, int n){
         if (n == 0) return sqrt(1.0 / h);
         return sqrt(2.0 / h) * cos(n * M_PI * y / h);
     }
@@ -303,7 +302,7 @@ public:
     // Calcul de Beta_n
     // -------------------------------------------------------------------------
 
-    static complexe compute_beta(double k0, double h, int n){
+    complexe compute_beta(double k0, double h, int n){
         return sqrt(complexe(k0*k0 - (M_PI*n/h)*(M_PI*n/h), 0.0));
     }
 
@@ -312,7 +311,7 @@ public:
     // Assemblage matrice E
     // -------------------------------------------------------------------------
 
-    static FullMatrix<complexe> compute_E(const MeshP2& mesh, int N_modes, int boundary_tag, double k0) {
+    FullMatrix<complexe> compute_E(const MeshP2& mesh, int N_modes, int boundary_tag, double k0) {
         
         int ndof = mesh.ndof();
         // E est une matrice (Ndof x N_modes)
@@ -383,7 +382,7 @@ public:
     // Assemblage matrice D
     // -------------------------------------------------------------------------
 
-    static void compute_D(FullMatrix<complexe>& D, int N_modes, double h, double k0){
+    void compute_D(FullMatrix<complexe>& D, int N_modes, double h, double k0){
             for (int j =0; j<N_modes; j++) {
                 D(j,j) = complex<double>(0.0,1.0)* compute_beta(k0, h, j);
             }       
@@ -393,7 +392,7 @@ public:
     // Assemblage matrice T
     // -------------------------------------------------------------------------
 
-    static void T_matrix(ProfileMatrix<complexe>& K, FullMatrix<complexe>& E, FullMatrix<complexe>& D, double h, int boundary_tag, double factor = -1.0){
+    void T_matrix(ProfileMatrix<complexe>& K, FullMatrix<complexe>& E, FullMatrix<complexe>& D, double h, int boundary_tag, double factor = -1.0){
 
         int Ndof = E.rows();
         int Nmodes = D.rows();
@@ -430,7 +429,7 @@ public:
     // Assemblage vecteur G
     // -------------------------------------------------------------------------
 
-    static vector<complexe> assemble_source_vector(const MeshP2& mesh, 
+    vector<complexe> assemble_source_vector(const MeshP2& mesh, 
                                                const FullMatrix<complexe>& E,
                                                int n_inc, 
                                                double k0, double L, double coef) {
