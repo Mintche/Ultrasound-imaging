@@ -57,6 +57,22 @@ namespace LinearSampling {
     // -------------------------------------------------------------------------
 
     void add_gaussian_noise(std::vector<complexe>& data, double noise_level) ;
+
+    // -------------------------------------------------------------------------
+    // Fonctions de haut niveau pour l'imagerie LSM
+    // -------------------------------------------------------------------------
+
+    // Calcul de l'indicateur LSM pour une fréquence donnée
+    void compute_lsm_single_freq(const MeshP2& mesh, double k0, double kd, double noise_level,
+                                 int grid_nx, int grid_ny, 
+                                 double x_scan_min, double x_scan_max, double y_scan_min, double y_scan_max,
+                                 int tag_left, int tag_right, std::vector<double>& indicators);
+
+    // Calcul moyenné sur plusieurs fréquences et écriture du fichier de sortie
+    void compute_lsm_average(const MeshP2& mesh, int n_freq, double base_k0, double contrast_ratio,
+                             double noise_percentage, int grid_nx, int grid_ny,
+                             int tag_left, int tag_right, const std::string& output_filename);
+
 };
 
 #endif // LINEAR_SAMPLING_HPP

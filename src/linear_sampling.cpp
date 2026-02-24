@@ -1,6 +1,8 @@
 #include "linear_sampling.hpp"
 
 namespace LinearSampling {
+    
+#define EPSILON_LSM 1e-6 // Paramètre de régularisation Tikhonov
 
 void compute_boundary_u_s(const MeshP2& mesh, int n_mode,int tag_left,int tag_right, 
                         double direction, [[maybe_unused]] double L, double k0, double h, 
@@ -103,6 +105,144 @@ void add_gaussian_noise(std::vector<complexe>& data, double noise_level) {
         double noise_imag = distribution(generator);
         val += complexe(noise_real, noise_imag);
     }
+}
+
+void compute_lsm_single_freq(const MeshP2& mesh, double k0, double kd, double noise_level,
+                             int grid_nx, int grid_ny, 
+                             double x_scan_min, double x_scan_max, double y_scan_min, double y_scan_max,
+                             int tag_left, int tag_right, std::vector<double>& indicators) {
+
+    double h = mesh.Ly;
+    double L = mesh.Lx / 2.0;
+    double x_source_gauche = mesh.xmin;
+    double x_source_droite = mesh.xmax;
+
+    // Calcul de N_MODES (nombre de modes de guide d'ondes)
+    int N_MODES = floor(h * std::min(k0,kd) / M_PI) + 5; 
+
+    printf("  -> Calcul k0=%.2f, kd=%.2f | N_modes=%d\n", k0, kd, N_MODES);
+
+    // Calcul du profil et matrices FEM
+    std::vector<size_t> profile = Fem::compute_profile_enhanced(mesh, {tag_left, tag_right});
+    ProfileMatrix<complexe> K(profile);
+
+    Fem::A_matrix(mesh, K, 1.0);                 // Matrice de Raideur
+    Fem::B_matrix(mesh, K, k0, kd, -1.0);        // Matrice de Masse
+    
+    // Matrices de projection et diagonale D
+    FullMatrix<complexe> E_minus = Fem::compute_E(mesh, N_MODES, tag_left, k0);
+    FullMatrix<complexe> E_plus  = Fem::compute_E(mesh, N_MODES, tag_right, k0);
+    FullMatrix<complexe> D(N_MODES, N_MODES);
+    Fem::compute_D(D, N_MODES, h, k0);
+
+    // Conditions DtN
+    Fem::T_matrix(K, E_minus, D, h, tag_left, -1.0);
+    Fem::T_matrix(K, E_plus, D, h, tag_right, -1.0);
+
+    // Factorisation
+    K.factorize(); 
+
+    // Simulation et construction des matrices S
+    FullMatrix<complexe> S_LL(N_MODES, N_MODES);
+    FullMatrix<complexe> S_RL(N_MODES, N_MODES);
+    FullMatrix<complexe> S_LR(N_MODES, N_MODES);
+    FullMatrix<complexe> S_RR(N_MODES, N_MODES);
+
+    std::vector<complexe> U(mesh.ndof());
+    std::vector<complexe> u_s(mesh.ndof());
+    std::vector<complexe> proj_plus(N_MODES), proj_minus(N_MODES);
+
+    // Cas 1 : Source Gauche
+    for (int n = 0; n < N_MODES; ++n) {
+        std::vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, n, k0, x_source_gauche, 1.0);
+        K.solve(U, G); 
+        if (noise_level > 0) LinearSampling::add_gaussian_noise(U, noise_level);
+        LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, 1.0, x_source_gauche, k0, h, u_s, U);
+        LinearSampling::compute_projection(u_s, E_plus, E_minus, proj_plus, proj_minus);
+        for(int m=0; m<N_MODES; ++m) {
+            S_RL(n, m) = proj_plus[m];
+            S_LL(n, m) = proj_minus[m];
+        }
+    }
+
+    // Cas 2 : Source Droite
+    for (int n = 0; n < N_MODES; ++n) {
+        std::vector<complexe> G = Fem::assemble_source_vector(mesh, E_plus, n, k0, x_source_droite, -1.0); 
+        K.solve(U, G);
+        if (noise_level > 0) LinearSampling::add_gaussian_noise(U, noise_level);
+        LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, -1.0, x_source_droite, k0, h, u_s, U);
+        LinearSampling::compute_projection(u_s, E_plus, E_minus, proj_plus, proj_minus);
+        for(int m=0; m<N_MODES; ++m) {
+            S_RR(n, m) = proj_plus[m];
+            S_LR(n, m) = proj_minus[m];
+        }
+    }
+
+    // Construction LSM
+    FullMatrix<complexe> F = LinearSampling::compute_F(S_LL, S_RL, S_LR, S_RR, N_MODES, k0, h, L);
+    FullMatrix<complexe> F_adj = F.adjoint();
+    FullMatrix<complexe> I(2*N_MODES,2*N_MODES);
+    for (int i = 0; i < 2*N_MODES;i++) I(i,i) = 1.0;
+    FullMatrix<complexe> M = F_adj * F + std::complex(EPSILON_LSM, 0.0)*I;
+    M.factorize();
+
+    // Calcul sur la grille
+    indicators.resize(grid_nx * grid_ny);
+    for(int i = 0; i < grid_nx; ++i) {
+        for(int j = 0; j < grid_ny; ++j) {
+            std::vector<complexe> H_z(2*N_MODES);
+            double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
+            double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
+
+            std::vector<complexe> G_z = LinearSampling::assemble_Gz(mesh, N_MODES, z1, z2 - mesh.ymin, mesh.xmin, mesh.xmax, k0, h);
+            std::vector<complexe> F_adj_G = F_adj * G_z;
+            M.solve(H_z, F_adj_G);
+
+            double norm_Hz = norm(H_z); 
+            indicators[i * grid_ny + j] = 1.0 / (norm_Hz + 1e-15);
+        }
+    }
+}
+
+void compute_lsm_average(const MeshP2& mesh, int n_freq, double base_k0, double contrast_ratio,
+                         double noise_percentage, int grid_nx, int grid_ny,
+                         int tag_left, int tag_right, const std::string& output_filename) {
+
+    double h = mesh.Ly;
+    double noise_level = (noise_percentage <= 0) ? -1 : noise_percentage * (1.0/sqrt(2.0*h));
+    
+    // Marges de sécurité pour le scan
+    double x_scan_min = mesh.xmin + 0.05; double x_scan_max = mesh.xmax - 0.05;
+    double y_scan_min = mesh.ymin + 0.05; double y_scan_max = mesh.ymax - 0.05;
+
+    std::vector<double> avg_indicators(grid_nx * grid_ny, 0.0);
+    std::vector<double> current_indicators;
+
+    for(int i = 0; i < n_freq; ++i) {
+        double k0 = base_k0 + i * 1.0; // Incrément de 1.0 par pas de fréquence
+        double kd = k0 * contrast_ratio;
+        
+        compute_lsm_single_freq(mesh, k0, kd, noise_level, grid_nx, grid_ny, 
+                                x_scan_min, x_scan_max, y_scan_min, y_scan_max, 
+                                tag_left, tag_right, current_indicators);
+
+        double max_val = normesup(current_indicators);
+        for(size_t k=0; k<avg_indicators.size(); ++k) {
+            avg_indicators[k] += (current_indicators[k] / max_val);
+        }
+    }
+
+    std::ofstream file(output_filename);
+    file << grid_nx << " " << grid_ny << "\n";
+    for(int i = 0; i < grid_nx; ++i) {
+        double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
+        for(int j = 0; j < grid_ny; ++j) {
+            double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
+            file << z1 << " " << z2 << " " << (avg_indicators[i * grid_ny + j] / n_freq) << "\n";
+        }
+    }
+    file.close();
+    printf("Resultats ecrits dans '%s'.\n", output_filename.c_str());
 }
 
 } // namespace LinearSampling
