@@ -17,7 +17,7 @@ Ce projet implémente une chaîne numérique complète en C++ pour la détection
   * Ajout de bruit synthétique paramétrable pour évaluer la robustesse de l'algorithme.
 * **Interopérabilité** : Export des résultats et maillages vers Matlab/Octave et format texte pour Python.
 
-## 🛠️ Prérequis
+## Prérequis
 
 Pour compiler et exécuter ce projet, vous aurez besoin de :
 * Un compilateur C++ supportant le standard **C++17** (GCC, Clang, MSVC).
