@@ -19,3 +19,5 @@ plot_lsm.py
 run_sol.m
 
 data/*.fig
+
+test/mesh_out.m
