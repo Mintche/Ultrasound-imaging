@@ -53,7 +53,7 @@ L'exécutable généré (`us_imaging.x`) prend 3 arguments en ligne de commande 
 
 **Exemple d'exécution :**
 ```bash
-./us_imaging.x data/test_ultrasound_defaut_centre.msh 5 3
+./us_imaging.x data/test_ultrasound_defaut_centre.msh 0.05 3
 ```
 *Cet exemple lance l'imagerie sur le maillage `test_ultrasound_defaut_centre.msh`, ajoute 5% de bruit au signal, et moyenne les résultats sur 3 fréquences.*
 
