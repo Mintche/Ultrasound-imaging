@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
     // CALCUL LSM
     // -------------------------------------------------------------------------
 
-    LinearSampling::PhysicalParameters phys_params = {340, 15*1e2, 2*1e1, n_freq}; //c0 freq start frestep n_freq
+    LinearSampling::PhysicalParameters phys_params = {340, 15*1e2, 20*1e1, n_freq}; //c0 freq start frestep n_freq
     
     // Paramètres de la grille d'imagerie
     int grid_nx = 100;

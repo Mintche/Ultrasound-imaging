@@ -36,12 +36,11 @@ Rectangle(1) = {0, 0, 0, Lx, Ly};
 // -> Tous les disques doivent rester dans [0,Lx]x[0,Ly]
 // -> Évite d’être trop près des bords, sinon tu “manges” la frontière.
 // ----------------------
-Ndef = 2;
+Disk(101) = {0.18, 0.3, 0, 0.022, 0.022};
+Disk(102) = {0.79, 0.4, 0, 0.025, 0.025};
+//Disk(103) = {0.5, 0.15, 0, 0.03, 0.03};
 
-Disk(101) = {0.18, 0.14, 0, 0.022, 0.022};
-Disk(105) = {0.79, 0.20, 0, 0.025, 0.025};
-
-surfsDef[] = {101,102,103,104,105,106};
+surfsDef[] = {101, 102};
 
 // ----------------------
 // Découpe du rectangle par tous les disques
@@ -55,9 +54,10 @@ out[] = BooleanFragments{ Surface{1}; Delete; }{ Surface{surfsDef[]}; Delete; };
 sAll[] = Surface In BoundingBox {0-1e-6, 0-1e-6, -1, Lx+1e-6, Ly+1e-6, 1};
 sDefAll[] = {};
 
-// Pour chaque disque (cx,cy,r), on prend la surface dans sa bounding box
-sOne[] = Surface In BoundingBox {0.18-0.022-1e-6, 0.14-0.022-1e-6, -1, 0.18+0.022+1e-6, 0.14+0.022+1e-6, 1}; sDefAll[] += {sOne[]};
-sOne[] = Surface In BoundingBox {0.79-0.025-1e-6, 0.20-0.025-1e-6, -1, 0.79+0.025+1e-6, 0.20+0.025+1e-6, 1}; sDefAll[] += {sOne[]};
+// Pour chaque disque (cx,cy,r), on prend la surface dans sa bounding box.
+sOne[] = Surface In BoundingBox {0.18-0.022-1e-6, 0.3-0.022-1e-6, -1, 0.18+0.022+1e-6, 0.3+0.022+1e-6, 1}; sDefAll[] += {sOne[]};
+sOne[] = Surface In BoundingBox {0.79-0.025-1e-6, 0.4-0.025-1e-6, -1, 0.79+0.025+1e-6, 0.4+0.025+1e-6, 1}; sDefAll[] += {sOne[]};
+//sOne[] = Surface In BoundingBox {0.5-0.03-1e-6, 0.15-0.03-1e-6, -1, 0.5+0.03+1e-6, 0.15+0.03+1e-6, 1}; sDefAll[] += {sOne[]};
 
 Unique(sDefAll[]);
 
