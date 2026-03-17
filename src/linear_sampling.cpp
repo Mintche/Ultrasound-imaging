@@ -36,7 +36,7 @@ FullMatrix<complexe> compute_F(const FullMatrix<complexe>& S_LL,
 
     for (int n = 0; n < N_modes; ++n) {
         
-        // Calcul du terme de phase et de normalisation (Eq. 231)
+        // Calcul du terme de phase et de normalisation
         complexe beta_n = Fem::compute_beta(k0, h, n);
         complexe i_beta = complexe(0., 1.) * beta_n;
         
@@ -44,7 +44,7 @@ FullMatrix<complexe> compute_F(const FullMatrix<complexe>& S_LL,
         complexe constante = exp(i_beta * L) / i_beta;
 
         for (int m = 0; m < N_modes; ++m) {
-            // Remplissage selon Eq (7) et définitions (231-235)
+            // Remplissage selon Eq (7) et définitions
             
             // Bloc F++ (Haut-Gauche) : Utilise (Un-)+ => Source Droite, Mesure Droite
             F(m, n) = constante * S_RR(n, m); 
@@ -78,7 +78,7 @@ FullMatrix<complexe> compute_F_pp(const FullMatrix<complexe>& S_m_p, int N_modes
     return F_pp;
 }
 
-std::vector<complexe> assemble_Gz([[maybe_unused]] const usim::MeshP2& mesh, int n_modes, double z1, double z2,
+std::vector<complexe> assemble_Gz(int n_modes, double z1, double z2,
                                     double x_min, double x_max, double k0, double h){
     
     std::vector<complexe> Gz(2*n_modes);
@@ -86,7 +86,7 @@ std::vector<complexe> assemble_Gz([[maybe_unused]] const usim::MeshP2& mesh, int
     for (int m = 0; m < n_modes;m++){
         
         complexe denominateur = complexe(0.,1.) * Fem::compute_beta(k0, h, m);
-        complexe c_val = Fem::evaluate_c_1d(z2, h, m); // Attention: suppose y dans [0, h]
+        complexe c_val = Fem::evaluate_c_1d(z2, h, m);
         
         // Phase relative au bord gauche (x_min) et droit (x_max)
         Gz[m] = exp(complexe(0.,1.) * Fem::compute_beta(k0, h, m) * (x_max - z1)) * c_val / denominateur;
@@ -194,7 +194,7 @@ void compute_lsm_single_freq(const usim::MeshP2& mesh, double k0, double kd, dou
             double z1 = x_scan_min + i * (x_scan_max - x_scan_min) / (grid_nx - 1);
             double z2 = y_scan_min + j * (y_scan_max - y_scan_min) / (grid_ny - 1);
 
-            std::vector<complexe> G_z = LinearSampling::assemble_Gz(mesh, N_MODES, z1, z2 - mesh.ymin, mesh.xmin, mesh.xmax, k0, h);
+            std::vector<complexe> G_z = LinearSampling::assemble_Gz(N_MODES, z1, z2 - mesh.ymin, mesh.xmin, mesh.xmax, k0, h);
             std::vector<complexe> F_adj_G = F_adj * G_z;
             M.solve(H_z, F_adj_G);
 

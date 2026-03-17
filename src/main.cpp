@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
 
     if(argc < 4){
         std::cout << "Usage: "<< argv[0]<< "<mesh.msh> <noise percentage> <n_frequencies> "<< std::endl;
-        std::cout <<"Exemple: "<< argv[0]<< " mesh.msh 5 3"<< std::endl;
+        std::cout <<"Exemple: "<< argv[0]<< " mesh.msh 0.05 3"<< std::endl;
         return 1;
     }
 

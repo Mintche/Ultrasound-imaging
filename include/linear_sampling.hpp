@@ -50,7 +50,7 @@ namespace LinearSampling {
     // Calcul de G 
     // -------------------------------------------------------------------------
 
-    std::vector<complexe> assemble_Gz(const usim::MeshP2& mesh, int n_modes, double z1, double z2, double x_min, double x_max, double k0, double h);
+    std::vector<complexe> assemble_Gz(int n_modes, double z1, double z2, double x_min, double x_max, double k0, double h);
 
     // -------------------------------------------------------------------------
     // Bruit Gaussien

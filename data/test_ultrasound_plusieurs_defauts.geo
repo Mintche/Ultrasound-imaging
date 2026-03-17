@@ -36,20 +36,10 @@ Rectangle(1) = {0, 0, 0, Lx, Ly};
 // -> Tous les disques doivent rester dans [0,Lx]x[0,Ly]
 // -> Évite d’être trop près des bords, sinon tu “manges” la frontière.
 // ----------------------
-Ndef = 6;
+Ndef = 2;
 
-// Défaut 1
 Disk(101) = {0.18, 0.14, 0, 0.022, 0.022};
-// Défaut 2
-Disk(102) = {0.33, 0.42, 0, 0.018, 0.018};
-// Défaut 3
-Disk(103) = {0.52, 0.26, 0, 0.030, 0.030};
-// Défaut 4
-Disk(104) = {0.67, 0.48, 0, 0.020, 0.020};
-// Défaut 5
 Disk(105) = {0.79, 0.20, 0, 0.025, 0.025};
-// Défaut 6
-Disk(106) = {0.90, 0.36, 0, 0.017, 0.017};
 
 surfsDef[] = {101,102,103,104,105,106};
 
@@ -67,11 +57,7 @@ sDefAll[] = {};
 
 // Pour chaque disque (cx,cy,r), on prend la surface dans sa bounding box
 sOne[] = Surface In BoundingBox {0.18-0.022-1e-6, 0.14-0.022-1e-6, -1, 0.18+0.022+1e-6, 0.14+0.022+1e-6, 1}; sDefAll[] += {sOne[]};
-sOne[] = Surface In BoundingBox {0.33-0.018-1e-6, 0.42-0.018-1e-6, -1, 0.33+0.018+1e-6, 0.42+0.018+1e-6, 1}; sDefAll[] += {sOne[]};
-sOne[] = Surface In BoundingBox {0.52-0.030-1e-6, 0.26-0.030-1e-6, -1, 0.52+0.030+1e-6, 0.26+0.030+1e-6, 1}; sDefAll[] += {sOne[]};
-sOne[] = Surface In BoundingBox {0.67-0.020-1e-6, 0.48-0.020-1e-6, -1, 0.67+0.020+1e-6, 0.48+0.020+1e-6, 1}; sDefAll[] += {sOne[]};
 sOne[] = Surface In BoundingBox {0.79-0.025-1e-6, 0.20-0.025-1e-6, -1, 0.79+0.025+1e-6, 0.20+0.025+1e-6, 1}; sDefAll[] += {sOne[]};
-sOne[] = Surface In BoundingBox {0.90-0.017-1e-6, 0.36-0.017-1e-6, -1, 0.90+0.017+1e-6, 0.36+0.017+1e-6, 1}; sDefAll[] += {sOne[]};
 
 Unique(sDefAll[]);
 

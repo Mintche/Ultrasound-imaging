@@ -74,7 +74,7 @@ int main() {
     double x_min = dummy_mesh.xmin;
     double x_max = dummy_mesh.xmax;
     
-    vector<complexe> Gz = LinearSampling::assemble_Gz(dummy_mesh, N_MODES, z1, z2, x_min, x_max, k0, h);
+    vector<complexe> Gz = LinearSampling::assemble_Gz(N_MODES, z1, z2, x_min, x_max, k0, h);
     
     if (Gz.size() == (size_t)(2 * N_MODES)) {
         cout << "[OK] Gz size correct." << endl;
