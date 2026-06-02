@@ -12,6 +12,8 @@ mesh_out.m
 
 .venv
 
+*.csv
+
 plot_lsm.py
 
 *.png
