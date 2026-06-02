@@ -152,34 +152,11 @@ void compute_lsm_single_freq(const usim::MeshP2& mesh, double k0, double kd, dou
     std::vector<complexe> u_s(mesh.ndof());
     std::vector<complexe> proj_plus(N_MODES), proj_minus(N_MODES);
 
-    // Ouverture des fichiers en dehors de la boucle pour éviter de les écraser
-    // On utilise std::ios::app pour ajouter à la suite si la fonction est appelée pour plusieurs fréquences
-    std::ofstream fichier_gauche("frontieres_source_gauche.csv", std::ios::app);
-    if (fichier_gauche.tellp() == 0) { // Si le fichier est vide, on écrit l'en-tête
-        fichier_gauche << "n_mode,y,Re(U),Im(U)\n";
-    }
-    
-    std::ofstream fichier_droite("frontieres_source_droite.csv", std::ios::app);
-    if (fichier_droite.tellp() == 0) {
-        fichier_droite << "n_mode,y,Re(U),Im(U)\n";
-    }
-
     // Cas 1 : Source Gauche
     for (int n = 0; n < N_MODES; ++n) {
         std::vector<complexe> G = Fem::assemble_source_vector(mesh, E_minus, n, k0, x_source_gauche, 1.0);
         K.solve(U, G); 
         if (noise_level > 0) LinearSampling::add_gaussian_noise(U, noise_level);
-        // Sauvegarde des données aux Bords
-        if (fichier_gauche.is_open()) {
-        for (const auto& node : mesh.nodes) {
-            if (node.ref == tag_left || node.ref == tag_right){
-                fichier_gauche << n << "," << node.y << "," << std::real(U[node.id]) << "," << std::imag(U[node.id]) << "\n";
-                }
-            }
-        } 
-        else {
-        std::cout << "Erreur d'écriture dans le fichier source gauche." << std::endl;
-        }
         LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, 1.0, x_source_gauche, k0, h, u_s, U);
         LinearSampling::compute_projection(u_s, E_plus, E_minus, proj_plus, proj_minus);
         for(int m=0; m<N_MODES; ++m) {
@@ -193,17 +170,6 @@ void compute_lsm_single_freq(const usim::MeshP2& mesh, double k0, double kd, dou
         std::vector<complexe> G = Fem::assemble_source_vector(mesh, E_plus, n, k0, x_source_droite, -1.0); 
         K.solve(U, G);
         if (noise_level > 0) LinearSampling::add_gaussian_noise(U, noise_level);
-        // Sauvegarde des données aux Bords
-        if (fichier_droite.is_open()) {
-        for (const auto& node : mesh.nodes) {
-            if (node.ref == tag_left || node.ref == tag_right){
-                fichier_droite << n << "," << node.y << "," << std::real(U[node.id]) << "," << std::imag(U[node.id]) << "\n";
-                }
-            }
-        } 
-        else {
-        std::cout << "Erreur d'écriture dans le fichier source droite." << std::endl;
-        }
         LinearSampling::compute_boundary_u_s(mesh, n, tag_left, tag_right, -1.0, x_source_droite, k0, h, u_s, U);
         LinearSampling::compute_projection(u_s, E_plus, E_minus, proj_plus, proj_minus);
         for(int m=0; m<N_MODES; ++m) {

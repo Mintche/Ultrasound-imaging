@@ -255,10 +255,10 @@ void MeshP2::write_matlab_mesh_m(const std::string& out_m_file) const {
 
 void MeshP2::write_defect_coords_txt(const std::string& filename) const {
     std::ofstream out(filename);
+    out << "x,y\n";
     for(const auto& t : triangles) {
         if(t.is_defect) {
-            for(int k=0; k<3; ++k) out << nodes[t.node_ids[k]].x << " " << nodes[t.node_ids[k]].y << (k==2 ? "" : " ");
-            out << "\n";
+            for(int k=0; k<3; ++k) out << nodes[t.node_ids[k]].x << "," << nodes[t.node_ids[k]].y << "\n";
         }
     }
 }

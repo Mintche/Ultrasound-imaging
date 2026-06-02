@@ -27,3 +27,7 @@ add_executable(us_imaging.x ${SOURCES})
 
 # 7. Ajouter les flags de compilation (équivalent de -Wall -Wextra -O3)
 target_compile_options(us_imaging.x PRIVATE -Wall -Wextra -O3)
+
+# 8. Exécutable pour générer les données PINN
+add_executable(generate_pinn_data.x test/generate_pinn_data.cpp src/fem.cpp src/mesh.cpp src/linear_sampling.cpp)
+target_compile_options(generate_pinn_data.x PRIVATE -Wall -Wextra -O3)

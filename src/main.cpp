@@ -42,6 +42,8 @@ int main(int argc, char** argv) {
 
     // Export pour vérification Matlab
     mesh.write_matlab_mesh_m("mesh_out.m");
+    // Export Python
+    mesh.write_defect_coords_txt("mesh_out.txt");
 
     std::cout << "Maillage charge : " <<  mesh.nodes.size() <<  " noeuds, " << mesh.nodes.size() << " triangles." <<std::endl;
     std::cout << "Parametres : Bruit = " << 100*noise_percentage<< " Moyenne sur " << n_freq << "frequence(s)";
