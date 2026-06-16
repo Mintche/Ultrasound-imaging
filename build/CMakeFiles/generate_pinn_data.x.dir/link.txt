@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/generate_pinn_data.x.dir/test/generate_pinn_data.cpp.o CMakeFiles/generate_pinn_data.x.dir/src/fem.cpp.o CMakeFiles/generate_pinn_data.x.dir/src/mesh.cpp.o CMakeFiles/generate_pinn_data.x.dir/src/linear_sampling.cpp.o -o generate_pinn_data.x 

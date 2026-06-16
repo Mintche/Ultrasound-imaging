@@ -1,4 +1,0 @@
-/home/mintche/Info/Ultrasound-imaging/build/CMakeFiles/us_imaging.x.dir
-/home/mintche/Info/Ultrasound-imaging/build/CMakeFiles/generate_pinn_data.x.dir
-/home/mintche/Info/Ultrasound-imaging/build/CMakeFiles/edit_cache.dir
-/home/mintche/Info/Ultrasound-imaging/build/CMakeFiles/rebuild_cache.dir
