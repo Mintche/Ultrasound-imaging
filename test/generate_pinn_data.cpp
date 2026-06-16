@@ -33,9 +33,9 @@ int main(int argc, char** argv) {
 
     int tag_left = 11;
     int tag_right = 12;
-    int n_mode = 0; // Mode fondamental uniquement
+    int n_mode = 1;
     double c0 = 340;
-    double contrast_ratio = 3.0;
+    double contrast_ratio = 0.8;
 
     // Fichiers de sortie
     ofstream file_left("pinn_boundary_left_n0.csv");
@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
         }
         
         double k0 = 2 * M_PI * f / c0;
-        double kd = contrast_ratio*k0;
+        double kd = 2 * M_PI * f / (c0 * contrast_ratio);
 
         cout << "Generation PINN pour f = " << f << " Hz (k0 = " << k0 << ")..." << endl;
 
