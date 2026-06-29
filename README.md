@@ -62,6 +62,70 @@ Lors de son exécution, le programme génère par défaut :
 * `mesh_out.m` : Un script Matlab contenant les données du maillage pour vérification.
 * `image_lsm.txt` : La grille de données contenant la valeur de l'indicateur LSM pour chaque point testé de la zone d'imagerie.
 
+## Génération de données FEM pour un PINN
+
+Le générateur résout un même problème pour plusieurs fréquences et modes incidents. Il exporte les mesures sur les deux ports, le champ sur tous les degrés de liberté P2 et, en option, une interpolation P2 sur une grille régulière.
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target generate_pinn_data.x -j4
+
+./build/generate_pinn_data.x \
+  --mesh data/test_us_barrehalf_centree.msh \
+  --output-dir pinn_data \
+  --dataset barrehalf_contrast20percent \
+  --c0 340 --speed-ratio 0.8 \
+  --frequencies 500,600,700 \
+  --modes 0,1 \
+  --grid 201x61
+```
+
+`--speed-ratio` désigne précisément `c_defaut / c0`; une valeur de `0.8` donne donc `c_defaut = 272 m/s`. Les tags par défaut sont 2 pour le défaut, 11 pour le port gauche et 12 pour le port droit. Ils peuvent être changés avec `--defect-tag`, `--left-tag` et `--right-tag`.
+
+Pour chaque mode, les fichiers de bord suivent directement la convention de `pinn_waveguide_multi_mode.py` :
+
+* `pinn_boundary_left_<dataset>_mode<N>.csv`
+* `pinn_boundary_right_<dataset>_mode<N>.csv`
+
+Les autres sorties sont :
+
+* `fem_field_*` : solution complexe aux degrés de liberté P2 ;
+* `fem_grid_*` : solution interpolée par les six fonctions de forme P2, avec célérité et tag de région ;
+* `fem_evaluation_grid_*` : grille fixe, six indices nodaux et six poids de Lagrange P2 par point ;
+* `fem_mesh_nodes_*` et `fem_mesh_elements_*` : coordonnées et connectivité P2, indices à partir de zéro ;
+* `fem_metadata_*` : paramètres et dimensions du jeu de données.
+
+Le couple `fem_field_*` + `fem_evaluation_grid_*` est la représentation de référence. Pour un point `p` de la grille, la reconstruction est exactement
+
+```text
+U_h[p] = phi0[p] * U[node0[p]] + ... + phi5[p] * U[node5[p]].
+```
+
+Le fichier `fem_grid_*` contient déjà ce calcul pour un usage immédiat. Il peut être régénéré en Python à partir des coefficients nodaux :
+
+```bash
+python3 tools/reconstruct_fem_p2.py \
+  --grid-map pinn_data/fem_evaluation_grid_barrehalf_contrast20percent.csv \
+  --field pinn_data/fem_field_barrehalf_contrast20percent_mode0.csv \
+  --frequency 600 --mode 0 \
+  --output reconstructed_fem_mode0_600Hz.csv
+```
+
+### Comparaison PINN–FEM
+
+Évaluer le PINN aux coordonnées `x_norm,y_norm` de `fem_evaluation_grid_*`, puis exporter les prédictions avec les coordonnées physiques `x,y` et les colonnes `Re_U,Im_U`. Les colonnes `f` et `mode` sont recommandées pour un fichier multi-cas. Ainsi, FEM et PINN sont comparés point par point sur une grille strictement identique.
+
+```bash
+python3 tools/compare_pinn_fem.py \
+  --fem pinn_data/fem_grid_barrehalf_contrast20percent_mode0.csv \
+  --pinn predictions/pinn_mode0.csv \
+  --frequency 600 --mode 0 \
+  --output comparison_mode0_600Hz.png \
+  --metrics-json comparison_mode0_600Hz.json
+```
+
+Par défaut, le script refuse des grilles différentes afin d'éviter d'ajouter une erreur d'interpolation à la comparaison. L'option `--interpolate-pinn` permet explicitement une interpolation linéaire si elle est souhaitée. Comme le PINN courant normalise chaque champ par `U_norm`, il faut soit réexporter `U_pred * U_norm`, soit passer cette valeur avec `--pinn-scale`. `--normalization max` permet aussi une comparaison de forme indépendante de l'amplitude, mais ne mesure plus l'erreur physique absolue.
+
 ## Architecture du Projet
 
 * `src/` : Fichiers sources C++ (`main.cpp`, algorithmes FEM, maillage, LSM).

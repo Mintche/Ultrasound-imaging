@@ -9,7 +9,7 @@ OBJ_DIR = obj
 APP_OBJS = $(OBJ_DIR)/fem.o $(OBJ_DIR)/mesh.o $(OBJ_DIR)/linear_sampling.o
 
 # Cible par défaut
-all: test_math.x test_mesh.x test_fem.x test_linear_sampling.x cleanobj
+all: test_math.x test_mesh.x test_fem.x test_linear_sampling.x test_p2_interpolation.x
 
 # Compilation des tests
 # test_math est purement basé sur des templates (math.hpp), pas besoin de lier d'objets
@@ -23,6 +23,9 @@ test_fem.x: test_fem.cpp $(OBJ_DIR)/fem.o $(OBJ_DIR)/mesh.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 test_linear_sampling.x: test_linear_sampling.cpp $(APP_OBJS)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+test_p2_interpolation.x: test_p2_interpolation.cpp $(OBJ_DIR)/mesh.o $(OBJ_DIR)/p2_interpolation.o
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 # Règle pour compiler les fichiers sources de l'application en objets

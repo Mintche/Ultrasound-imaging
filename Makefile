@@ -10,7 +10,7 @@ OBJS = $(SRCS:.cpp=.o)
 OBJ = us_imaging.x
 
 # Cible par défaut
-all: $(OBJ) supp
+all: $(OBJ)
 
 # Lien final
 $(OBJ): $(OBJS)
@@ -19,9 +19,6 @@ $(OBJ): $(OBJS)
 # Règle pour compiler chaque .cpp en .o
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-supp:
-	rm -f $(OBJS)
 
 # Nettoyage
 clean:
