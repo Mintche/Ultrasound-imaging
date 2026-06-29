@@ -12,9 +12,9 @@ using namespace std;
 using namespace usim;
 
 int main(int argc, char** argv) {
-    if (argc < 3) {
-        cout << "Usage: " << argv[0] << " <mesh.msh> freqs" << endl;
-        cout << "Exemple: " << argv[0] << " ../data/test_ultrasound_defaut_centre.msh f0 f1 f2..." << endl;
+    if (argc < 6) {
+        cout << "Usage: " << argv[0] << " <mesh.msh> n_modes c0 contrast freqs" << endl;
+        cout << "Exemple: " << argv[0] << " ../data/test_ultrasound_defaut_centre.msh 0 340 0.8 f0 f1 f2..." << endl;
         return 1;
     }
 
@@ -33,27 +33,27 @@ int main(int argc, char** argv) {
 
     int tag_left = 11;
     int tag_right = 12;
-    int n_mode = 1;
-    double c0 = 340;
-    double contrast_ratio = 0.8;
+    int n_mode = atoi(argv[2]);
+    double c0 = atof(argv[3]);
+    double contrast_ratio = atof(argv[4]);
 
     // Fichiers de sortie
-    ofstream file_left("pinn_boundary_left_n0.csv");
+    ofstream file_left("pinn_boundary_left_.csv");
     file_left << "f,k0,x,y,Re_U,Im_U\n";
 
-    ofstream file_right("pinn_boundary_right_n0.csv");
+    ofstream file_right("pinn_boundary_right_.csv");
     file_right << "f,k0,x,y,Re_U,Im_U\n";
 
     // Paramètres de fréquences (Curriculum Learning)
-    int n_freqs = argc - 2;
+    int n_freqs = argc - 5;
 
     vector<size_t> profile = Fem::compute_profile_enhanced(mesh, {tag_left, tag_right});
 
     for (int i = 0; i < n_freqs; ++i) {
         
-        double f = std::atof(argv[i+2]);
+        double f = std::atof(argv[i+5]);
         if (f <= 0.0) {
-            cerr << "Attention: Frequence invalide ignoree ('" << argv[i+2] << "')" << endl;
+            cerr << "Attention: Frequence invalide ignoree ('" << argv[i+5] << "')" << endl;
             continue;
         }
         
@@ -66,7 +66,6 @@ int main(int argc, char** argv) {
         Fem::A_matrix(mesh, K, 1.0);
         Fem::B_matrix(mesh, K, k0, kd, -1.0);
 
-        // Même si on excite n=0, on a besoin de N_MODES suffisants pour absorber les modes évanescents
         int N_MODES = floor(mesh.Ly * k0 / M_PI) + 5; 
 
         FullMatrix<complexe> E_minus = Fem::compute_E(mesh, N_MODES, tag_left, k0);
