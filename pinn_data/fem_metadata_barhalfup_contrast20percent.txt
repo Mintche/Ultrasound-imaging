@@ -1,6 +1,6 @@
 schema_version=2
-mesh=data/test_us_barrehalf_centree.msh
-dataset=barrehalf_contrast20percent
+mesh=data/test_us_barhalfup_centree.msh
+dataset=barhalfup_contrast20percent
 element=P2_triangle
 node_index_base=0
 c0=340
